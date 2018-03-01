@@ -1,0 +1,17 @@
+version: "2"
+services:
+  web:
+    container_name: web
+    restart: always
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./:/go/src/riggedstars
+    links:
+      - postgres
+  postgres:
+    restart: always
+    image: postgres:alpine
+    environment:
+      POSTGRES_PASSWORD: pass
