@@ -1,11 +1,7 @@
 FROM golang:alpine
 
-RUN apk --no-cache add git bash wget curl
-RUN go get github.com/codegangsta/gin
-
-RUN go get -u github.com/gorilla/mux
-RUN go get -u github.com/lib/pq
-RUN go get -u github.com/jinzhu/gorm
+RUN apk --no-cache add git
+RUN go get -u github.com/codegangsta/gin github.com/gorilla/mux github.com/lib/pq github.com/jinzhu/gorm github.com/gorilla/websocket
 
 WORKDIR /go/src/riggedstars
 
