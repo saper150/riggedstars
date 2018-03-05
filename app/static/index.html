@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+
+
+<body>
+    <div>
+        <input type="text" id="userId">
+        <button onclick="connect()">connect</button>
+        <button onclick="disconnect()">disconnect</button>
+        <input type="text" id="message">
+        <button onclick="send()">send</button>
+    </div>
+    <ul id="userList"></ul>
+
+
+</body>
+
+</html>
+
+<script>
+
+    let socket
+    let userList = []
+    function connect() {
+        socket = new WebSocket("ws://" + location.host + `/game?user=${document.getElementById('userId').value}`);
+        socket.onopen = () => { console.log('opened') }
+        socket.onerror = console.log
+        socket.onmessage = message => { handleMessage(JSON.parse(message.data)) }
+        socket.onclose = () => {  }
+    }
+
+    function disconnect() {
+        socket.close()
+        userList = []; renderUsers()
+     }
+
+    function send() {
+        socket.send(document.getElementById('message').value)
+    }
+
+
+    function handleMessage(message) {
+        console.log(message)
+        if (message.Type === "newUser") {
+            userList.push(message.Payload)
+            renderUsers()
+        } else if (message.Type === "deleteUser") {
+            userList = userList.filter(user => user.ID != message.Payload.ID)
+            renderUsers()
+        }
+    }
+
+    function renderUsers() {
+        document.getElementById('userList').innerHTML = userList.map(user => `<li>${user.ID} ${user.Name}</li>`).join('')
+    }
+
+
+</script>
