@@ -41,6 +41,55 @@ func getUsers(w http.ResponseWriter, req *http.Request) {
 	w.Write(js)
 }
 
+func deleteUser(w http.ResponseWriter, req *http.Request){
+
+	db := db.Db();
+
+	id, ok := req.URL.Query()["id"]
+	if !ok {
+		panic("error in id")
+	}
+
+	var user models.User
+	db.First(&user, id)
+	w.Header().Set("Content-Type", "application/json")
+	if user.ID != 0 {
+		db.Delete(&user)
+		js, _ := json.Marshal(user)
+		w.Write(js)
+	}
+}
+
+func updateUser(w http.ResponseWriter, req *http.Request){
+	decoder := json.NewDecoder(req.Body)
+	var userForm createUserForm
+	err := decoder.Decode(&userForm)
+	if err != nil {
+		panic(err)
+	}
+	
+	db := db.Db();
+
+	id, ok := req.URL.Query()["id"]
+	if !ok {
+		panic("error in id")
+	}
+
+	var user models.User
+	db.First(&user, id)
+
+	if user.ID == 0{
+		return
+	}
+
+	if len(userForm.Name) > 0{
+		db.Model(&user).Update("Name", userForm.Name)
+	}
+
+	js, _ := json.Marshal(user)
+	w.Write(js)
+}
+
 func deckk(w http.ResponseWriter, req *http.Request) {
 
 	js, _ := json.Marshal(deck.ShufeledDeck())
@@ -51,4 +100,6 @@ func deckk(w http.ResponseWriter, req *http.Request) {
 func RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("", createUser).Methods("POST")
 	router.HandleFunc("", getUsers).Methods("GET")
+	router.HandleFunc("", deleteUser).Methods("DELETE")
+	router.HandleFunc("", updateUser).Methods("PUT")
 }
