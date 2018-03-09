@@ -11,7 +11,8 @@ import (
 )
 
 type createUserForm struct {
-	Name string
+	Name     string
+	Password string
 }
 
 func createUser(w http.ResponseWriter, req *http.Request) {
@@ -19,10 +20,11 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 	var userForm createUserForm
 	err := decoder.Decode(&userForm)
 	if err != nil {
-		panic(err)
+		http.Error(w, "Error in decoding request body", http.StatusBadRequest)
+		return
 	}
 	db := db.Db()
-	user := models.User{Name: userForm.Name}
+	user := models.User{Name: userForm.Name, Password: userForm.Password}
 	db.Create(&user)
 	js, _ := json.Marshal(user)
 	w.Header().Set("Content-Type", "application/json")
@@ -41,51 +43,42 @@ func getUsers(w http.ResponseWriter, req *http.Request) {
 	w.Write(js)
 }
 
-func deleteUser(w http.ResponseWriter, req *http.Request){
+func deleteUser(w http.ResponseWriter, req *http.Request) {
+	db := db.Db()
 
-	db := db.Db();
-
-	id, ok := req.URL.Query()["id"]
-	if !ok {
-		panic("error in id")
-	}
-
+	vars := mux.Vars(req)
+	id := vars["id"]
 	var user models.User
 	db.First(&user, id)
 	w.Header().Set("Content-Type", "application/json")
+
 	if user.ID != 0 {
 		db.Delete(&user)
 		js, _ := json.Marshal(user)
 		w.Write(js)
+	} else {
+		http.Error(w, "No user with id:"+id, http.StatusBadRequest)
 	}
 }
 
-func updateUser(w http.ResponseWriter, req *http.Request){
+func updateUser(w http.ResponseWriter, req *http.Request) {
 	decoder := json.NewDecoder(req.Body)
 	var userForm createUserForm
 	err := decoder.Decode(&userForm)
 	if err != nil {
-		panic(err)
-	}
-	
-	db := db.Db();
-
-	id, ok := req.URL.Query()["id"]
-	if !ok {
-		panic("error in id")
-	}
-
-	var user models.User
-	db.First(&user, id)
-
-	if user.ID == 0{
+		http.Error(w, "Error in decoding request body", http.StatusBadRequest)
 		return
 	}
-
-	if len(userForm.Name) > 0{
-		db.Model(&user).Update("Name", userForm.Name)
+	db := db.Db()
+	vars := mux.Vars(req)
+	id := vars["id"]
+	var user models.User
+	db.First(&user, id)
+	if user.ID == 0 {
+		http.Error(w, "No user with id:"+id, http.StatusBadRequest)
+		return
 	}
-
+	db.Model(&user).Update(userForm)
 	js, _ := json.Marshal(user)
 	w.Write(js)
 }
@@ -100,6 +93,6 @@ func deckk(w http.ResponseWriter, req *http.Request) {
 func RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("", createUser).Methods("POST")
 	router.HandleFunc("", getUsers).Methods("GET")
-	router.HandleFunc("", deleteUser).Methods("DELETE")
-	router.HandleFunc("", updateUser).Methods("PUT")
+	router.HandleFunc("/id/{id:[0-9]+}", deleteUser).Methods("DELETE")
+	router.HandleFunc("/id/{id:[0-9]+}", updateUser).Methods("PUT")
 }

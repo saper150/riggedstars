@@ -1,1 +1,6 @@
+.gitignore
 gin-bin
+src/
+pkg/
+bin/
+.vscode/
