@@ -8,6 +8,7 @@ import (
 	"riggedstars/app/models"
 
 	"github.com/gorilla/mux"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type createUserForm struct {
@@ -24,7 +25,12 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	db := db.Db()
-	user := models.User{Name: userForm.Name, Password: userForm.Password}
+	bytesHash, err := bcrypt.GenerateFromPassword([]byte(userForm.Password), 12)
+	if err != nil {
+		http.Error(w, "Error while generating a hash", http.StatusBadRequest)
+		return
+	}
+	user := models.User{Name: userForm.Name, Password: string(bytesHash)}
 	db.Create(&user)
 	js, _ := json.Marshal(user)
 	w.Header().Set("Content-Type", "application/json")
