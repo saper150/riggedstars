@@ -19,3 +19,13 @@ func DeleteUserMessage(user models.User) []byte {
 	js, _ := json.Marshal(UserMessage{"deleteUser", user})
 	return js
 }
+
+type TextMessage struct {
+	Type    string
+	Payload string
+}
+
+func CreateTextMessage(text string) []byte {
+	js, _ := json.Marshal(TextMessage{"text", text})
+	return js
+}

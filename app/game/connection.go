@@ -1,6 +1,7 @@
 package game
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,11 +12,9 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type Message struct {
-}
-
 const (
 	waiting        = iota
+	inRoom         = iota
 	waintingInRoom = iota
 	playing        = iota
 )
@@ -26,7 +25,7 @@ type Client struct {
 	state int
 }
 
-func (client *Client) handleMessages(hub *Hub) {
+func (client *Client) handleHub(hub *Hub) {
 
 	for {
 		_, message, err := client.conn.ReadMessage()
@@ -34,27 +33,62 @@ func (client *Client) handleMessages(hub *Hub) {
 			hub.unregister <- client
 			break
 		}
-		client.conn.WriteMessage(websocket.TextMessage, message)
-		fmt.Println(string(message))
+
+		var messageJSON map[string]interface{}
+		json.Unmarshal(message, &messageJSON)
+
+		if messageJSON["Type"] == "joinRoom" {
+			type Name struct{ Name string }
+			type Info struct {
+				Payload int
+			}
+			var info Info
+			json.Unmarshal(message, &info)
+
+			hub.joinRoom <- JoinRoom{client, info.Payload}
+			break
+		}
 	}
+}
+
+type JoinRoom struct {
+	client *Client
+	roomId int
 }
 
 type Hub struct {
 	clients    map[*Client]bool
 	register   chan *Client
 	unregister chan *Client
+	joinRoom   chan JoinRoom
+	rooms      map[int]*Room
 }
 
 func newHub() *Hub {
-	return &Hub{
+	hub := &Hub{
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
+		joinRoom:   make(chan JoinRoom),
 		clients:    make(map[*Client]bool),
+		rooms:      make(map[int]*Room),
+	}
+	hub.rooms[0] = newRoom(0, "rom0")
+	hub.rooms[1] = newRoom(1, "rom1")
+	go hub.rooms[0].run()
+	go hub.rooms[1].run()
+	return hub
+}
+
+func newRoom(id int, name string) *Room {
+	return &Room{
+		ID:      id,
+		Clients: make(map[*Client]bool),
+		Name:    name,
+		Message: make(chan ClientMessage),
 	}
 }
 
 func (hub *Hub) run() {
-
 	for {
 		select {
 		case newClient := <-hub.register:
@@ -72,6 +106,15 @@ func (hub *Hub) run() {
 				client.conn.WriteMessage(websocket.TextMessage, DeleteUserMessage(leavingClient.user))
 			}
 			fmt.Println("client disconedted ID=" + fmt.Sprint(leavingClient.user.ID))
+		case joinRoom := <-hub.joinRoom:
+			fmt.Println("join room")
+			hub.rooms[joinRoom.roomId].Clients[joinRoom.client] = true
+			fmt.Println("added user to room")
+			delete(hub.clients, joinRoom.client)
+			fmt.Println("deleted user from hub")
+			go joinRoom.client.handleRoom(hub.rooms[joinRoom.roomId])
+			fmt.Println("handle room gorutine")
+			fmt.Printf("Client ID=%d Joined room ID=%d", joinRoom.client.user.ID, joinRoom.roomId)
 		}
 	}
 }
@@ -99,7 +142,7 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 
 	client := Client{conn, user, waiting}
 	hub.register <- &client
-	go client.handleMessages(hub)
+	go client.handleHub(hub)
 }
 
 func registerSocket() {

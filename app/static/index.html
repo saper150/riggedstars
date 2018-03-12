@@ -14,11 +14,12 @@
         <input type="text" id="userId">
         <button onclick="connect()">connect</button>
         <button onclick="disconnect()">disconnect</button>
-        <input type="text" id="message">
-        <button onclick="send()">send</button>
     </div>
     <ul id="userList"></ul>
-
+    <div>
+        <input type="text" id="roomId">
+        <button onclick="joinRoom()">joinRoom</button>
+    </div>
 
 </body>
 
@@ -33,18 +34,13 @@
         socket.onopen = () => { console.log('opened') }
         socket.onerror = console.log
         socket.onmessage = message => { handleMessage(JSON.parse(message.data)) }
-        socket.onclose = () => {  }
+        socket.onclose = () => { }
     }
 
     function disconnect() {
         socket.close()
         userList = []; renderUsers()
-     }
-
-    function send() {
-        socket.send(document.getElementById('message').value)
     }
-
 
     function handleMessage(message) {
         console.log(message)
@@ -61,5 +57,13 @@
         document.getElementById('userList').innerHTML = userList.map(user => `<li>${user.ID} ${user.Name}</li>`).join('')
     }
 
+    function joinRoom() {
+        const id = Number(document.getElementById('roomId').value)
+        console.log('join room')
+        socket.send(JSON.stringify({
+            Type: 'joinRoom',
+            Payload: id
+        }))
+    }
 
 </script>
