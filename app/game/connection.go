@@ -12,17 +12,9 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const (
-	waiting        = iota
-	inRoom         = iota
-	waintingInRoom = iota
-	playing        = iota
-)
-
 type Client struct {
-	conn  *websocket.Conn
-	user  models.User
-	state int
+	conn *websocket.Conn
+	user models.User
 }
 
 func (client *Client) handleHub(hub *Hub) {
@@ -137,7 +129,7 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client := Client{conn, user, waiting}
+	client := Client{conn, user}
 	hub.register <- &client
 }
 
