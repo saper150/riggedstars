@@ -36,7 +36,6 @@ func (client *Client) handleHub(hub *Hub) {
 
 		var messageJSON map[string]interface{}
 		json.Unmarshal(message, &messageJSON)
-
 		if messageJSON["Type"] == "joinRoom" {
 			type Name struct{ Name string }
 			type Info struct {
@@ -74,8 +73,8 @@ func newHub() *Hub {
 	}
 	hub.rooms[0] = newRoom(0, "rom0")
 	hub.rooms[1] = newRoom(1, "rom1")
-	go hub.rooms[0].run()
-	go hub.rooms[1].run()
+	go hub.rooms[0].run(hub)
+	go hub.rooms[1].run(hub)
 	return hub
 }
 
@@ -85,6 +84,8 @@ func newRoom(id int, name string) *Room {
 		Clients: make(map[*Client]bool),
 		Name:    name,
 		Message: make(chan ClientMessage),
+		Leave:   make(chan *Client),
+		Join:    make(chan *Client),
 	}
 }
 
@@ -92,14 +93,13 @@ func (hub *Hub) run() {
 	for {
 		select {
 		case newClient := <-hub.register:
-
 			for client := range hub.clients {
 				client.conn.WriteMessage(websocket.TextMessage, NewUserMessage(newClient.user))
 				newClient.conn.WriteMessage(websocket.TextMessage, NewUserMessage(client.user))
 			}
-			fmt.Println("client connected ID=" + fmt.Sprint(newClient.user.ID))
+			fmt.Println("client joined hub ID=" + fmt.Sprint(newClient.user.ID))
 			hub.clients[newClient] = true
-
+			go newClient.handleHub(hub)
 		case leavingClient := <-hub.unregister:
 			delete(hub.clients, leavingClient)
 			for client := range hub.clients {
@@ -107,14 +107,9 @@ func (hub *Hub) run() {
 			}
 			fmt.Println("client disconedted ID=" + fmt.Sprint(leavingClient.user.ID))
 		case joinRoom := <-hub.joinRoom:
-			fmt.Println("join room")
-			hub.rooms[joinRoom.roomId].Clients[joinRoom.client] = true
-			fmt.Println("added user to room")
 			delete(hub.clients, joinRoom.client)
-			fmt.Println("deleted user from hub")
-			go joinRoom.client.handleRoom(hub.rooms[joinRoom.roomId])
-			fmt.Println("handle room gorutine")
-			fmt.Printf("Client ID=%d Joined room ID=%d", joinRoom.client.user.ID, joinRoom.roomId)
+			hub.rooms[joinRoom.roomId].Join <- joinRoom.client
+			fmt.Println("Client ID=", joinRoom.client.user.ID, "Joined room ID=", joinRoom.roomId)
 		}
 	}
 }
@@ -132,21 +127,18 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	}
 	userID := r.URL.Query()["user"]
 	if userID == nil {
+		conn.Close()
 		return
 	}
 	var user models.User
 	db.Db().Find(&user, userID)
 	if user.ID == 0 {
+		conn.Close()
 		return
 	}
 
 	client := Client{conn, user, waiting}
 	hub.register <- &client
-	go client.handleHub(hub)
-}
-
-func registerSocket() {
-
 }
 
 func RegisterRoutes(router *mux.Router) {

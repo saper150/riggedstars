@@ -10,16 +10,24 @@
 
 
 <body>
+    <p id="state"></p>
     <div>
+        <label for="userId">userId</label>
         <input type="text" id="userId">
         <button onclick="connect()">connect</button>
         <button onclick="disconnect()">disconnect</button>
     </div>
     <ul id="userList"></ul>
     <div>
+        <label for="roomId">roomId</label>
         <input type="text" id="roomId">
         <button onclick="joinRoom()">joinRoom</button>
+        <button onclick="leaveRoom()">leaveRoom</button>
     </div>
+
+    <p>message room</p>
+    <textarea id="roomMessage"></textarea>
+    <button onclick="sendMessageToRoom()">send message to room</button>
 
 </body>
 
@@ -27,29 +35,43 @@
 
 <script>
 
+    const state = {
+        set state(s) {
+            this._state = s
+            document.getElementById('state').innerHTML = s
+        },
+        get state(){
+            return this._state
+        }
+    }
+
+    state.state = 'disconnected'
+
     let socket
     let userList = []
     function connect() {
         socket = new WebSocket("ws://" + location.host + `/game?user=${document.getElementById('userId').value}`);
-        socket.onopen = () => { console.log('opened') }
+        socket.onopen = () => { state.state = "hub" }
         socket.onerror = console.log
         socket.onmessage = message => { handleMessage(JSON.parse(message.data)) }
-        socket.onclose = () => { }
+        socket.onclose = () => { state.state = "disconnected" }
     }
 
     function disconnect() {
         socket.close()
-        userList = []; renderUsers()
+        userList = [];
+        renderUsers()
     }
 
     function handleMessage(message) {
-        console.log(message)
         if (message.Type === "newUser") {
             userList.push(message.Payload)
             renderUsers()
         } else if (message.Type === "deleteUser") {
             userList = userList.filter(user => user.ID != message.Payload.ID)
             renderUsers()
+        } else {
+            console.log('unknows message type', message)
         }
     }
 
@@ -59,11 +81,26 @@
 
     function joinRoom() {
         const id = Number(document.getElementById('roomId').value)
-        console.log('join room')
         socket.send(JSON.stringify({
             Type: 'joinRoom',
             Payload: id
         }))
+        state.state = "room id=" + id
+        state.roomId = id
+    }
+
+    function sendMessageToRoom() {
+        socket.send(JSON.stringify({
+            Type: 'text',
+            Payload: document.getElementById('roomMessage').value
+        }))
+    }
+
+    function leaveRoom(){
+        socket.send(JSON.stringify({
+            Type: 'leaveRoom'
+        }))
+        state.state = "hub"
     }
 
 </script>
