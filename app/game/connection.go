@@ -1,6 +1,7 @@
 package game
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,22 +12,12 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type Message struct {
-}
-
-const (
-	waiting        = iota
-	waintingInRoom = iota
-	playing        = iota
-)
-
 type Client struct {
-	conn  *websocket.Conn
-	user  models.User
-	state int
+	conn *websocket.Conn
+	user models.User
 }
 
-func (client *Client) handleMessages(hub *Hub) {
+func (client *Client) handleHub(hub *Hub) {
 
 	for {
 		_, message, err := client.conn.ReadMessage()
@@ -34,44 +25,83 @@ func (client *Client) handleMessages(hub *Hub) {
 			hub.unregister <- client
 			break
 		}
-		client.conn.WriteMessage(websocket.TextMessage, message)
-		fmt.Println(string(message))
+
+		var messageJSON map[string]interface{}
+		json.Unmarshal(message, &messageJSON)
+		if messageJSON["Type"] == "joinRoom" {
+			type Name struct{ Name string }
+			type Info struct {
+				Payload int
+			}
+			var info Info
+			json.Unmarshal(message, &info)
+
+			hub.joinRoom <- JoinRoom{client, info.Payload}
+			break
+		}
 	}
+}
+
+type JoinRoom struct {
+	client *Client
+	roomId int
 }
 
 type Hub struct {
 	clients    map[*Client]bool
 	register   chan *Client
 	unregister chan *Client
+	joinRoom   chan JoinRoom
+	rooms      map[int]*Room
 }
 
 func newHub() *Hub {
-	return &Hub{
+	hub := &Hub{
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
+		joinRoom:   make(chan JoinRoom),
 		clients:    make(map[*Client]bool),
+		rooms:      make(map[int]*Room),
+	}
+	hub.rooms[0] = newRoom(0, "rom0")
+	hub.rooms[1] = newRoom(1, "rom1")
+	go hub.rooms[0].run(hub)
+	go hub.rooms[1].run(hub)
+	return hub
+}
+
+func newRoom(id int, name string) *Room {
+	return &Room{
+		ID:      id,
+		Clients: make(map[*Client]bool),
+		Name:    name,
+		Message: make(chan ClientMessage),
+		Leave:   make(chan *Client),
+		Join:    make(chan *Client),
 	}
 }
 
 func (hub *Hub) run() {
-
 	for {
 		select {
 		case newClient := <-hub.register:
-
 			for client := range hub.clients {
 				client.conn.WriteMessage(websocket.TextMessage, NewUserMessage(newClient.user))
 				newClient.conn.WriteMessage(websocket.TextMessage, NewUserMessage(client.user))
 			}
-			fmt.Println("client connected ID=" + fmt.Sprint(newClient.user.ID))
+			fmt.Println("client joined hub ID=" + fmt.Sprint(newClient.user.ID))
 			hub.clients[newClient] = true
-
+			go newClient.handleHub(hub)
 		case leavingClient := <-hub.unregister:
 			delete(hub.clients, leavingClient)
 			for client := range hub.clients {
 				client.conn.WriteMessage(websocket.TextMessage, DeleteUserMessage(leavingClient.user))
 			}
 			fmt.Println("client disconedted ID=" + fmt.Sprint(leavingClient.user.ID))
+		case joinRoom := <-hub.joinRoom:
+			delete(hub.clients, joinRoom.client)
+			hub.rooms[joinRoom.roomId].Join <- joinRoom.client
+			fmt.Println("Client ID=", joinRoom.client.user.ID, "Joined room ID=", joinRoom.roomId)
 		}
 	}
 }
@@ -89,21 +119,18 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	}
 	userID := r.URL.Query()["user"]
 	if userID == nil {
+		conn.Close()
 		return
 	}
 	var user models.User
 	db.Db().Find(&user, userID)
 	if user.ID == 0 {
+		conn.Close()
 		return
 	}
 
-	client := Client{conn, user, waiting}
+	client := Client{conn, user}
 	hub.register <- &client
-	go client.handleMessages(hub)
-}
-
-func registerSocket() {
-
 }
 
 func RegisterRoutes(router *mux.Router) {
