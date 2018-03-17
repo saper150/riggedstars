@@ -23,8 +23,9 @@ type responseForm struct {
 }
 
 type loginAuthForm struct {
-	Data  models.User
-	Token string
+	Data   models.User
+	Token  string
+	Status int
 }
 
 type authForm struct {
@@ -43,6 +44,13 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	db := db.Db()
+	var userInDb models.User
+	db.Where(&models.User{Name: userForm.Name}).First(&userInDb)
+	if userInDb.ID != 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Name already exist"))
+		return
+	}
 	bytesHash, err := bcrypt.GenerateFromPassword([]byte(userForm.Password), 12)
 	if err != nil {
 		http.Error(w, "Error while generating a hash", http.StatusBadRequest)
@@ -113,6 +121,9 @@ func checkPassword(hashedPassword, password string) bool {
 }
 
 func login(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Content-Type", "application/json")
+
 	decoder := json.NewDecoder(req.Body)
 	var userForm createUserForm
 	err := decoder.Decode(&userForm)
@@ -120,7 +131,6 @@ func login(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "Error in decoding request body", http.StatusBadRequest)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
 
 	jsErr, _ := json.Marshal(responseForm{Data: "Wrong login or password", Status: http.StatusUnauthorized})
 	db := db.Db()
@@ -135,6 +145,7 @@ func login(w http.ResponseWriter, req *http.Request) {
 	match := checkPassword(user.Password, userForm.Password)
 
 	if !match {
+		http.Error(w, "", 401)
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write(jsErr)
 		return
@@ -145,8 +156,15 @@ func login(w http.ResponseWriter, req *http.Request) {
 	})
 
 	tokenString, _ := token.SignedString(riggedKey)
-	jsAuth, _ := json.Marshal(loginAuthForm{Data: user, Token: tokenString})
+	jsAuth, _ := json.Marshal(loginAuthForm{Data: user, Token: tokenString, Status: http.StatusOK})
 	w.Write(jsAuth)
+
+}
+
+func loginOptions(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST")
+	w.Header().Set("Access-Control-Allow-Headers", "Access-Control-Allow-Origin, content-type")
 }
 
 func deckk(w http.ResponseWriter, req *http.Request) {
@@ -162,6 +180,7 @@ func RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/id/{id:[0-9]+}", deleteUser).Methods("DELETE")
 	router.HandleFunc("/id/{id:[0-9]+}", updateUser).Methods("PUT")
 	router.HandleFunc("/login", login).Methods("POST")
+	router.HandleFunc("/login", loginOptions).Methods("OPTIONS")
 	router.HandleFunc("/login/authTest", authTest).Methods("GET")
 }
 
