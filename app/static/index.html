@@ -29,6 +29,10 @@
     <textarea id="roomMessage"></textarea>
     <button onclick="sendMessageToRoom()">send message to room</button>
 
+    <div>
+        <button onclick="startGame()">startGame</button>
+    </div>
+
 </body>
 
 </html>
@@ -101,6 +105,13 @@
             Type: 'leaveRoom'
         }))
         state.state = "hub"
+    }
+
+    function startGame(){
+        socket.send(JSON.stringify({
+            Type: 'startGame'
+        }))
+        state.state = "game"
     }
 
 </script>

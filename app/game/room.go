@@ -3,49 +3,94 @@ package game
 import (
 	"encoding/json"
 	"fmt"
-
-	"github.com/gorilla/websocket"
 )
 
-type ClientMessage struct {
-	From    *Client
+type RoomMessage struct {
+	From    *RoomClient
 	Message string
 }
 
+type RoomState int
+
+const (
+	wating      = iota
+	playing     = iota
+	disconected = iota
+)
+
+type RoomClient struct {
+	State       RoomState
+	Client      *Client
+	GameMessage chan []byte
+}
+
+const (
+	idle = iota
+	game = iota
+)
+
 type Room struct {
-	ID      int
-	Name    string
-	Clients map[*Client]bool
-	Message chan ClientMessage
-	Leave   chan *Client
-	Join    chan *Client
+	ID        int
+	State     int
+	Name      string
+	Clients   map[*RoomClient]bool
+	StartGame chan bool
+	Message   chan RoomMessage
+	Leave     chan *RoomClient
+	Join      chan *Client
+	Brodcast  chan []byte
+}
+
+func NewRoom(id int, name string) *Room {
+	return &Room{
+		ID:        id,
+		Clients:   make(map[*RoomClient]bool),
+		Name:      name,
+		Message:   make(chan RoomMessage),
+		Leave:     make(chan *RoomClient),
+		Join:      make(chan *Client),
+		State:     idle,
+		StartGame: make(chan bool),
+		Brodcast:  make(chan []byte),
+	}
 }
 
 func (room *Room) run(hub *Hub) {
+	var game *Game
+	game = nil
 	for {
 		select {
 		case message := <-room.Message:
-			for client := range room.Clients {
-				if client.user != message.From.user {
-					client.conn.WriteMessage(websocket.TextMessage, CreateTextMessage(message.Message))
+			for roomClient := range room.Clients {
+				if roomClient.Client.conn != message.From.Client.conn {
+					roomClient.Client.send <- CreateTextMessage(message.Message)
 				}
 			}
-		case client := <-room.Leave:
-			delete(room.Clients, client)
-			hub.register <- client
+		case <-room.StartGame:
+			if game == nil {
+				game = NewGame(room)
+			}
+		case roomClient := <-room.Leave:
+			delete(room.Clients, roomClient)
+			hub.register <- roomClient.Client
 		case client := <-room.Join:
-			room.Clients[client] = true
-			go client.handleRoom(room)
+			roomClient := &RoomClient{wating, client, make(chan []byte)}
+			room.Clients[roomClient] = true
+			go roomClient.handleRoom(room)
+		case message := <-room.Brodcast:
+			for roomClient := range room.Clients {
+				roomClient.Client.send <- message
+			}
 		}
 	}
 }
 
-func (client *Client) handleRoom(room *Room) {
+func (roomClient *RoomClient) handleRoom(room *Room) {
 	for {
-		_, message, err := client.conn.ReadMessage()
+		_, message, err := roomClient.Client.conn.ReadMessage()
 		if err != nil {
 			fmt.Println("error reading room")
-			room.Leave <- client
+			room.Leave <- roomClient
 			break
 		}
 
@@ -53,18 +98,20 @@ func (client *Client) handleRoom(room *Room) {
 		json.Unmarshal(message, &messageJSON)
 
 		if messageJSON["Type"] == "text" {
-			fmt.Println("text message from ID=", client.user.ID)
+			fmt.Println("text message from ID=", roomClient.Client.user.ID)
 			type Name struct{ Name string }
 			type Info struct {
 				Payload string
 			}
 			var info Info
 			json.Unmarshal(message, &info)
-			room.Message <- ClientMessage{client, info.Payload}
+			room.Message <- RoomMessage{roomClient, info.Payload}
+		} else if messageJSON["Type"] == "startGame" {
+			room.StartGame <- true
+			break
 		} else if messageJSON["Type"] == "leaveRoom" {
-			room.Leave <- client
+			room.Leave <- roomClient
 			break
 		}
-
 	}
 }

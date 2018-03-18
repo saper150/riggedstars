@@ -2,6 +2,7 @@ package game
 
 import (
 	"encoding/json"
+	"riggedstars/app/deck"
 	"riggedstars/app/models"
 )
 
@@ -27,5 +28,20 @@ type TextMessage struct {
 
 func CreateTextMessage(text string) []byte {
 	js, _ := json.Marshal(TextMessage{"text", text})
+	return js
+}
+
+func gameStartMessage() []byte {
+	js, _ := json.Marshal(TextMessage{"gameStart", ""})
+	return js
+}
+
+type DealCard struct {
+	Type    string
+	Payload deck.Card
+}
+
+func dealCardMessage(card deck.Card) []byte {
+	js, _ := json.Marshal(DealCard{"dealCard", card})
 	return js
 }

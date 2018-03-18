@@ -15,10 +15,16 @@ import (
 type Client struct {
 	conn *websocket.Conn
 	user models.User
+	send chan []byte
+}
+
+func (client *Client) handleSendMessage() {
+	for message := range client.send {
+		client.conn.WriteMessage(websocket.TextMessage, message)
+	}
 }
 
 func (client *Client) handleHub(hub *Hub) {
-
 	for {
 		_, message, err := client.conn.ReadMessage()
 		if err != nil {
@@ -63,22 +69,11 @@ func newHub() *Hub {
 		clients:    make(map[*Client]bool),
 		rooms:      make(map[int]*Room),
 	}
-	hub.rooms[0] = newRoom(0, "rom0")
-	hub.rooms[1] = newRoom(1, "rom1")
+	hub.rooms[0] = NewRoom(0, "rom0")
+	hub.rooms[1] = NewRoom(1, "rom1")
 	go hub.rooms[0].run(hub)
 	go hub.rooms[1].run(hub)
 	return hub
-}
-
-func newRoom(id int, name string) *Room {
-	return &Room{
-		ID:      id,
-		Clients: make(map[*Client]bool),
-		Name:    name,
-		Message: make(chan ClientMessage),
-		Leave:   make(chan *Client),
-		Join:    make(chan *Client),
-	}
 }
 
 func (hub *Hub) run() {
@@ -86,16 +81,17 @@ func (hub *Hub) run() {
 		select {
 		case newClient := <-hub.register:
 			for client := range hub.clients {
-				client.conn.WriteMessage(websocket.TextMessage, NewUserMessage(newClient.user))
-				newClient.conn.WriteMessage(websocket.TextMessage, NewUserMessage(client.user))
+				client.send <- NewUserMessage(newClient.user)
+				newClient.send <- NewUserMessage(client.user)
 			}
 			fmt.Println("client joined hub ID=" + fmt.Sprint(newClient.user.ID))
 			hub.clients[newClient] = true
 			go newClient.handleHub(hub)
 		case leavingClient := <-hub.unregister:
 			delete(hub.clients, leavingClient)
+			close(leavingClient.send)
 			for client := range hub.clients {
-				client.conn.WriteMessage(websocket.TextMessage, DeleteUserMessage(leavingClient.user))
+				client.send <- DeleteUserMessage(leavingClient.user)
 			}
 			fmt.Println("client disconedted ID=" + fmt.Sprint(leavingClient.user.ID))
 		case joinRoom := <-hub.joinRoom:
@@ -129,7 +125,8 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client := Client{conn, user}
+	client := Client{conn, user, make(chan []byte, 5)}
+	go client.handleSendMessage()
 	hub.register <- &client
 }
 
