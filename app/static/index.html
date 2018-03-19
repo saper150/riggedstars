@@ -40,7 +40,7 @@
             this._state = s
             document.getElementById('state').innerHTML = s
         },
-        get state(){
+        get state() {
             return this._state
         }
     }
@@ -96,7 +96,7 @@
         }))
     }
 
-    function leaveRoom(){
+    function leaveRoom() {
         socket.send(JSON.stringify({
             Type: 'leaveRoom'
         }))
