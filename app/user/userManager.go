@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"riggedstars/app/db"
 	"riggedstars/app/models"
+	"strings"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
@@ -156,7 +157,7 @@ func login(w http.ResponseWriter, req *http.Request) {
 		ID:   user.ID,
 	})
 	tokenString, _ := token.SignedString(riggedKey)
-	jsAuth, _ := json.Marshal(loginAuthForm{Data: user, Token: tokenString, Status: http.StatusOK})
+	jsAuth, _ := json.Marshal(loginAuthForm{Data: user, Token: "Bearer " + tokenString, Status: http.StatusOK})
 	w.Write(jsAuth)
 
 }
@@ -171,16 +172,30 @@ func tokenAuthWithClaimsExample(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	token, err := jwt.ParseWithClaims(authToken, &customClaims{}, func(token *jwt.Token) (interface{}, error) {
+	claims, err := getBearerTokenClaims(authToken)
+	if err == nil {
+		w.Header().Set("Content-Type", "application/json")
+		js, _ := json.Marshal(customClaims{Name: claims.Name, ID: claims.ID})
+		w.Write(js)
+	} else {
+		w.Write([]byte("error"))
+	}
+}
+
+func getBearerTokenClaims(bearerTokenString string) (*customClaims, error) {
+	tokenSplit := strings.Split(bearerTokenString, " ")
+	var tokenString string
+	if len(tokenSplit) == 2 {
+		tokenString = tokenSplit[1]
+	}
+	token, err := jwt.ParseWithClaims(tokenString, &customClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return []byte(riggedKey), nil
 	})
 	if err == nil {
 		claims := token.Claims.(*customClaims)
-		w.Header().Set("Content-Type", "application/json")
-		js, _ := json.Marshal(customClaims{Name: claims.Name, ID: claims.ID})
-		w.Write(js)
-
+		return claims, nil
 	} else {
-		w.Write([]byte("error"))
+		return nil, err
 	}
+
 }
