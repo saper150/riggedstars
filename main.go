@@ -5,6 +5,7 @@ import (
 	"riggedstars/app/game"
 	"riggedstars/app/user"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
@@ -13,5 +14,9 @@ func main() {
 	user.RegisterRoutes(r.PathPrefix("/user").Subrouter())
 	game.RegisterRoutes(r.PathPrefix("/game").Subrouter())
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./app/static"))))
-	http.ListenAndServe(":3001", r)
+
+	headersAllowed := handlers.AllowedHeaders([]string{"content-type"})
+	originsAllowed := handlers.AllowedOrigins([]string{"*"})
+	methodsAllowed := handlers.AllowedMethods([]string{"GET", "DELETE", "POST", "PUT"})
+	http.ListenAndServe(":3001", handlers.CORS(headersAllowed, originsAllowed, methodsAllowed)(r))
 }

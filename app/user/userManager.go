@@ -178,6 +178,7 @@ func tokenAuthWithClaimsExample(w http.ResponseWriter, req *http.Request) {
 		js, _ := json.Marshal(customClaims{Name: claims.Name, ID: claims.ID})
 		w.Write(js)
 	} else {
+		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("error"))
 	}
 }
