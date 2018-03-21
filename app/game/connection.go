@@ -63,21 +63,23 @@ func newHub() *Hub {
 		clients:    make(map[*Client]bool),
 		rooms:      make(map[int]*Room),
 	}
-	hub.rooms[0] = newRoom(0, "rom0")
-	hub.rooms[1] = newRoom(1, "rom1")
+	//TODO: rooms auto creation
+	hub.rooms[0] = newRoom(0, "rom0", 4)
+	hub.rooms[1] = newRoom(1, "rom1", 4)
 	go hub.rooms[0].run(hub)
 	go hub.rooms[1].run(hub)
 	return hub
 }
 
-func newRoom(id int, name string) *Room {
+func newRoom(id int, name string, maxClients int) *Room {
 	return &Room{
-		ID:      id,
-		Clients: make(map[*Client]bool),
-		Name:    name,
-		Message: make(chan ClientMessage),
-		Leave:   make(chan *Client),
-		Join:    make(chan *Client),
+		ID:         id,
+		Clients:    make(map[*Client]bool),
+		Name:       name,
+		Message:    make(chan ClientMessage),
+		Leave:      make(chan *Client),
+		Join:       make(chan *Client),
+		MaxClients: maxClients,
 	}
 }
 
@@ -139,4 +141,28 @@ func RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("", func(w http.ResponseWriter, r *http.Request) {
 		serveWs(hub, w, r)
 	})
+	router.HandleFunc("/roomList", hub.getRoomList).Methods("GET")
+}
+
+type roomInfo struct {
+	ID           int
+	ClientsCount int
+	Name         string
+	MaxClients   int
+}
+
+func (hub *Hub) getRoomList(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("content-type", "application/json")
+	rooms := make([]roomInfo, len(hub.rooms))
+
+	for i := 0; i < len(hub.rooms); i++ {
+		rooms[i] = roomInfo{ID: hub.rooms[i].ID, Name: hub.rooms[i].Name, ClientsCount: len(hub.rooms[i].Clients), MaxClients: hub.rooms[i].MaxClients}
+	}
+	js, err := json.Marshal(rooms)
+	if err == nil {
+		w.Write([]byte(js))
+	} else {
+		w.WriteHeader(http.StatusBadRequest)
+	}
+
 }

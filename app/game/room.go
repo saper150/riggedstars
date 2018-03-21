@@ -13,12 +13,13 @@ type ClientMessage struct {
 }
 
 type Room struct {
-	ID      int
-	Name    string
-	Clients map[*Client]bool
-	Message chan ClientMessage
-	Leave   chan *Client
-	Join    chan *Client
+	ID         int
+	Name       string
+	Clients    map[*Client]bool
+	Message    chan ClientMessage
+	Leave      chan *Client
+	Join       chan *Client
+	MaxClients int
 }
 
 func (room *Room) run(hub *Hub) {
