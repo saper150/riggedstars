@@ -1,7 +1,6 @@
 package game
 
 import (
-	"encoding/json"
 	"riggedstars/app/models"
 )
 
@@ -10,14 +9,12 @@ type UserMessage struct {
 	Payload models.User
 }
 
-func NewUserMessage(user models.User) []byte {
-	js, _ := json.Marshal(UserMessage{"newUser", user})
-	return js
+func NewUserMessage(user models.User) interface{} {
+	return UserMessage{"newUser", user}
 }
 
-func DeleteUserMessage(user models.User) []byte {
-	js, _ := json.Marshal(UserMessage{"deleteUser", user})
-	return js
+func DeleteUserMessage(user models.User) interface{} {
+	return UserMessage{"deleteUser", user}
 }
 
 type TextMessage struct {
@@ -25,7 +22,6 @@ type TextMessage struct {
 	Payload string
 }
 
-func CreateTextMessage(text string) []byte {
-	js, _ := json.Marshal(TextMessage{"text", text})
-	return js
+func CreateTextMessage(text string) interface{} {
+	return TextMessage{"text", text}
 }

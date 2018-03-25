@@ -13,7 +13,7 @@ func main() {
 	r := mux.NewRouter()
 	user.RegisterRoutes(r.PathPrefix("/user").Subrouter())
 	game.RegisterRoutes(r.PathPrefix("/game").Subrouter())
-	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./app/static"))))
+	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 
 	headersAllowed := handlers.AllowedHeaders([]string{"content-type"})
 	originsAllowed := handlers.AllowedOrigins([]string{"*"})
