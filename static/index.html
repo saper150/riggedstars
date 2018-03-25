@@ -22,13 +22,6 @@
         <button onclick="disconnect()">disconnect</button>
     </div>
     <ul id="userList"></ul>
-    <div>
-        <label for="roomId">roomId</label>
-        <input type="text" id="roomId">
-        <button onclick="joinRoom()">joinRoom</button>
-        <button onclick="leaveRoom()">leaveRoom</button>
-    </div>
-
     <p>message room</p>
     <textarea id="roomMessage"></textarea>
     <button onclick="sendMessageToRoom()">send message to room</button>
@@ -83,28 +76,11 @@
         document.getElementById('userList').innerHTML = userList.map(user => `<li>${user.ID} ${user.Name}</li>`).join('')
     }
 
-    function joinRoom() {
-        const id = Number(document.getElementById('roomId').value)
-        socket.send(JSON.stringify({
-            Type: 'joinRoom',
-            Payload: id
-        }))
-        state.state = "room id=" + id
-        state.roomId = id
-    }
-
     function sendMessageToRoom() {
         socket.send(JSON.stringify({
             Type: 'text',
             Payload: document.getElementById('roomMessage').value
         }))
-    }
-
-    function leaveRoom() {
-        socket.send(JSON.stringify({
-            Type: 'leaveRoom'
-        }))
-        state.state = "hub"
     }
 
 </script>
