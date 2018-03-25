@@ -64,8 +64,8 @@ func newHub() *Hub {
 		rooms:      make(map[int]*Room),
 	}
 	//TODO: rooms auto creation
-	hub.rooms[0] = newRoom(0, "rom0", 4)
-	hub.rooms[1] = newRoom(1, "rom1", 4)
+	hub.rooms[0] = newRoom(0, "room0", 4)
+	hub.rooms[1] = newRoom(1, "room1", 4)
 	go hub.rooms[0].run(hub)
 	go hub.rooms[1].run(hub)
 	return hub
@@ -99,7 +99,7 @@ func (hub *Hub) run() {
 			for client := range hub.clients {
 				client.conn.WriteMessage(websocket.TextMessage, DeleteUserMessage(leavingClient.user))
 			}
-			fmt.Println("client disconedted ID=" + fmt.Sprint(leavingClient.user.ID))
+			fmt.Println("client disconected ID=" + fmt.Sprint(leavingClient.user.ID))
 		case joinRoom := <-hub.joinRoom:
 			delete(hub.clients, joinRoom.client)
 			hub.rooms[joinRoom.roomId].Join <- joinRoom.client
@@ -111,6 +111,9 @@ func (hub *Hub) run() {
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
 }
 
 func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
