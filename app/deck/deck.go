@@ -9,6 +9,12 @@ type Card struct {
 
 type Deck []Card
 
+func (deck *Deck) Next() Card {
+	var card Card
+	card, *deck = (*deck)[0], (*deck)[1:]
+	return card
+}
+
 func ShufeledDeck() Deck {
 
 	deck := make(Deck, 52)
