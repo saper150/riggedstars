@@ -66,12 +66,13 @@ func newHub() *Hub {
 
 func newRoom(id int, name string, maxClients int) *Room {
 	return &Room{
-		ID:       id,
-		Clients:  make(map[*Client]bool),
-		Name:     name,
-		Commands: make(chan clientCommand),
-		Leave:    make(chan *Client),
-		Join:     make(chan *Client),
+		ID:         id,
+		Clients:    make(map[*Client]bool),
+		Name:       name,
+		Commands:   make(chan clientCommand),
+		Leave:      make(chan *Client),
+		Join:       make(chan *Client),
+		MaxClients: maxClients,
 	}
 }
 
