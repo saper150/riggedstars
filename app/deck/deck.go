@@ -15,6 +15,11 @@ func (deck *Deck) Next() Card {
 	return card
 }
 
+func (deck *Deck) Flop() []Card {
+	deck.Next()
+	return []Card{deck.Next(), deck.Next(), deck.Next()}
+}
+
 func ShufeledDeck() Deck {
 
 	deck := make(Deck, 52)

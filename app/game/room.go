@@ -16,6 +16,7 @@ type Room struct {
 	Commands chan clientCommand
 	Leave    chan *Client
 	Join     chan *Client
+	Game     *Game
 }
 
 func (room *Room) run(hub *Hub) {
@@ -55,6 +56,10 @@ func handleMessages(room *Room, command clientCommand) {
 	case "text":
 		textMessage := CreateTextMessage(command.Message.Payload.(string))
 		room.sendToEveryOneExcept(command.From, textMessage)
+	case "startGame":
+		room.Game = StartGame(room.Clients)
+	default:
+		room.Game.gameplayChan <- command
 	}
 }
 

@@ -1,8 +1,8 @@
 package game
 
 import (
-	"riggedstars/app/models"
 	"riggedstars/app/deck"
+	"riggedstars/app/models"
 )
 
 type UserMessage struct {
@@ -18,13 +18,17 @@ func DeleteUserMessage(user models.User) interface{} {
 	return UserMessage{"deleteUser", user}
 }
 
-type ClientOwnCardMessage struct {
-	Type string
-	Payload deck.Card
+type SendCardsMessage struct {
+	Type    string
+	Payload []deck.Card
 }
 
-func CreateClientOwnCardMessage(card deck.Card) interface{} {
-	return ClientOwnCardMessage{"ownCard", card}
+func CreateClientOwnCardMessage(cards []deck.Card) interface{} {
+	return SendCardsMessage{"ownCards", cards}
+}
+
+func CreateSendTableCards(cards []deck.Card) interface{} {
+	return SendCardsMessage{"tableCards", cards}
 }
 
 type TextMessage struct {
@@ -34,4 +38,14 @@ type TextMessage struct {
 
 func CreateTextMessage(text string) interface{} {
 	return TextMessage{"text", text}
+}
+
+type BetMessage struct {
+	Type    string
+	ID      uint
+	ammount int
+}
+
+func CreateBetMessage(client *Client, bet int) interface{} {
+	return BetMessage{"bet", client.user.ID, bet}
 }
