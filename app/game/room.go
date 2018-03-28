@@ -28,7 +28,7 @@ func (room *Room) run(hub *Hub) {
 			delete(room.Clients, client)
 			room.sendToEveryOneExcept(nil, DeleteUserMessage(client.user))
 		case client := <-room.Join:
-			fmt.Printf("CLient %d joined room %d", client.user.ID, room.ID)
+			fmt.Printf("Client %d joined room %d\n", client.user.ID, room.ID)
 			for c := range room.Clients {
 				client.sendMessage <- NewUserMessage(c.user)
 			}

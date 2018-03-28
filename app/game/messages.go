@@ -43,9 +43,32 @@ func CreateTextMessage(text string) interface{} {
 type BetMessage struct {
 	Type    string
 	ID      uint
-	ammount int
+	Ammount int
 }
 
 func CreateBetMessage(client *Client, bet int) interface{} {
 	return BetMessage{"bet", client.user.ID, bet}
+}
+
+type FoldMessage struct {
+	Type string
+	ID   uint
+}
+
+func CreateFoldMessage(client *Client) interface{} {
+	return FoldMessage{"fold", client.user.ID}
+}
+
+type ActivePlayerMessage struct {
+	Type string
+	ID   uint
+	Name string
+}
+
+func CreateActivePlayerMessage(client *Client) interface{} {
+	return ActivePlayerMessage{Type: "activePlayer", ID: client.user.ID, Name: client.user.Name}
+}
+
+func CreateMinBetPlayerMessage(client *Client, minBet int) interface{} {
+	return BetMessage{"minBet", client.user.ID, minBet}
 }

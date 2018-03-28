@@ -29,6 +29,7 @@
             <input type="number" id="bet">
         </label>
         <button onclick="bet()">bet</button>
+        <button onclick="fold()">fold</button>
     </div>
 
 
@@ -96,6 +97,12 @@
         socket.send(JSON.stringify({
             Type: "bet",
             Payload: Number(document.getElementById("bet").value)
+        }))
+    }
+
+    function fold(){
+        socket.send(JSON.stringify({
+            Type: "fold",
         }))
     }
 
