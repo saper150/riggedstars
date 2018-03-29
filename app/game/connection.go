@@ -49,7 +49,8 @@ func (client *Client) serveListen() {
 }
 
 type Hub struct {
-	rooms map[int]*Room
+	rooms         map[int]*Room
+	lastRoomIndex int
 }
 
 func newHub() *Hub {
@@ -59,6 +60,7 @@ func newHub() *Hub {
 	//TODO: rooms auto creation
 	hub.rooms[0] = newRoom(0, "room0", 4)
 	hub.rooms[1] = newRoom(1, "room1", 4)
+	hub.lastRoomIndex = 1
 	go hub.rooms[0].run(hub)
 	go hub.rooms[1].run(hub)
 	return hub
@@ -134,10 +136,12 @@ func RegisterRoutes(router *mux.Router) {
 		joinRoom(hub, w, r)
 	})
 	router.HandleFunc("/roomList", hub.getRoomList).Methods("GET")
+	router.HandleFunc("/createRoom", hub.createRoom).Methods("POST")
 }
 
 type roomInfo struct {
-	ID           int
+	ID int
+	//TODO: change to clients
 	ClientsCount int
 	Name         string
 	MaxClients   int
@@ -156,5 +160,25 @@ func (hub *Hub) getRoomList(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.WriteHeader(http.StatusBadRequest)
 	}
+}
 
+type CreateRoomForm struct {
+	Name       string
+	MaxClients int
+}
+
+func (hub *Hub) createRoom(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("content-type", "text/html")
+	decoder := json.NewDecoder(r.Body)
+	var newRoomForm CreateRoomForm
+	err := decoder.Decode(&newRoomForm)
+	if err != nil {
+		http.Error(w, "Error in decoding request body", http.StatusBadRequest)
+		return
+	}
+	newID := hub.lastRoomIndex + 1
+	hub.lastRoomIndex += 1
+	hub.rooms[newID] = newRoom(newID, newRoomForm.Name, newRoomForm.MaxClients)
+	go hub.rooms[newID].run(hub)
+	w.Write([]byte("room created"))
 }
