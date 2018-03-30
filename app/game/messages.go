@@ -60,15 +60,38 @@ func CreateFoldMessage(client *Client) interface{} {
 }
 
 type ActivePlayerMessage struct {
+	Type   string
+	ID     uint
+	Name   string
+	MinBet int
+}
+
+func CreateActivePlayerMessage(client *Client, minBet int) interface{} {
+	return ActivePlayerMessage{Type: "activePlayer", ID: client.user.ID, Name: client.user.Name, MinBet: minBet}
+}
+
+func CreateButtonPlayerMessage(client *Client) interface{} {
+	return PlayerMessage{"button", client.user.ID, client.user.Name}
+}
+
+type PlayerMessage struct {
 	Type string
 	ID   uint
 	Name string
 }
 
-func CreateActivePlayerMessage(client *Client) interface{} {
-	return ActivePlayerMessage{Type: "activePlayer", ID: client.user.ID, Name: client.user.Name}
+type TestClientMsg struct {
+	Clients []Test
+}
+type Test struct {
+	Index int
+	Name  string
 }
 
-func CreateMinBetPlayerMessage(client *Client, minBet int) interface{} {
-	return BetMessage{"minBet", client.user.ID, minBet}
+func CreateTestMsg(clients []*Client) interface{} {
+	test := make([]Test, 0)
+	for i, client := range clients {
+		test = append(test, Test{i, client.user.Name})
+	}
+	return TestClientMsg{test}
 }

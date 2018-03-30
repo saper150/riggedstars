@@ -32,7 +32,7 @@ func ShufeledDeck() Deck {
 	for i, suit := range []string{"clubs", "diamonds", "hearts", "spades"} {
 		for j := 0; j < 13; j++ {
 			deck[i*13+j].Suit = suit
-			deck[i*13+j].Value = j
+			deck[i*13+j].Value = j + 1
 		}
 	}
 

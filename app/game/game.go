@@ -13,6 +13,9 @@ type Game struct {
 	gameplayChan  chan clientCommand
 	blind         int
 	startingStack int
+	blindIncrease int
+	blindLevels   int
+	round         *Round
 }
 
 func StartGame(clients map[*Client]bool) *Game {
@@ -29,6 +32,7 @@ func StartGame(clients map[*Client]bool) *Game {
 		stacks:        make(map[*Client]int),
 		blind:         10,
 		startingStack: 500,
+		round:         NewRound(players, 0, 1),
 	}
 	for _, client := range game.clients {
 		game.stacks[client] = game.startingStack
@@ -37,82 +41,112 @@ func StartGame(clients map[*Client]bool) *Game {
 	return &game
 }
 
-func StartRound(game *Game) {
-
-	gameDeck := deck.ShufeledDeck()
-	stageBets := make(bets)
-	clientBets := make(bets)
-
-	folded := make(map[*Client]bool)
-	playerCards := make(map[*Client][]deck.Card)
-	for _, client := range game.clients {
-		stageBets[client] = 0
-		clientBets[client] = 0
-		folded[client] = false
-		playerCards[client] = []deck.Card{gameDeck.Next(), gameDeck.Next()}
-		client.sendMessage <- CreateClientOwnCardMessage(playerCards[client])
-	}
-
-	//Small Blind
-	stageBets[game.clients[1%len(game.clients)]] = game.blind
-	game.stacks[game.clients[1%len(game.clients)]] -= game.blind
-	//Big Blind
-	stageBets[game.clients[2%len(game.clients)]] = 2 * game.blind
-	game.stacks[game.clients[2%len(game.clients)]] -= 2 * game.blind
-
-	activePlayerIndex := 3 % len(game.clients)
-
-	betStage(game, stageBets, folded, clientBets, activePlayerIndex)
-
-	floppedCards := gameDeck.Flop()
-	game.broadcast(CreateSendTableCards(floppedCards))
-
-	//flop
-	betStage(game, stageBets, folded, clientBets, 0)
-
-	turnCard := gameDeck.TableCard()
-	game.broadcast(CreateSendTableCards(turnCard))
-	//turn
-
-	betStage(game, stageBets, folded, clientBets, 0)
-
-	riverCard := gameDeck.TableCard()
-	game.broadcast(CreateSendTableCards(riverCard))
-
-	betStage(game, stageBets, folded, clientBets, 0)
-
-	//river
+type Round struct {
+	buttonIndex  int
+	roundCounter int
+	roundDeck    deck.Deck //?
+	stageBets    bets
+	clientBets   bets
+	folded       map[*Client]bool
+	playerCards  map[*Client][]deck.Card
+	clients      []*Client
 }
 
-func betStage(game *Game, stageBets bets, folded map[*Client]bool, clientBets bets, activePlayerIndex int) {
-	betStageFolded := make(map[*Client]bool)
-	for client, fold := range folded {
-		betStageFolded[client] = fold
+func NewRound(players []*Client, nextButtonIndex, nextRoundCounter int) *Round {
+	round := Round{
+		roundDeck:    deck.ShufeledDeck(),
+		playerCards:  make(map[*Client][]deck.Card),
+		stageBets:    make(bets),
+		clientBets:   make(bets),
+		folded:       make(map[*Client]bool),
+		buttonIndex:  nextButtonIndex,
+		roundCounter: nextRoundCounter,
+		clients:      players,
 	}
-	clientsActions := 0
-	for !isBetStageOver(stageBets, folded, betStageFolded, clientsActions) {
-		for folded[game.clients[activePlayerIndex]] {
-			activePlayerIndex = (activePlayerIndex + 1) % len(game.clients)
-		}
-		maxBet := 0
-		for _, bet := range stageBets {
-			if bet > maxBet {
-				maxBet = bet
-			}
-		}
 
-		minBet := maxBet - stageBets[game.clients[activePlayerIndex]]
-		game.broadcast(CreateActivePlayerMessage(game.clients[activePlayerIndex]))
-		game.broadcast(CreateMinBetPlayerMessage(game.clients[activePlayerIndex], minBet))
-		bettingStageMessagesHandler(game, activePlayerIndex, game.stacks, stageBets, folded)
-		activePlayerIndex = (activePlayerIndex + 1) % len(game.clients)
-		for folded[game.clients[activePlayerIndex]] {
-			activePlayerIndex = (activePlayerIndex + 1) % len(game.clients)
-		}
+	for _, client := range round.clients {
+		round.stageBets[client] = 0
+		round.clientBets[client] = 0
+		round.folded[client] = false
+		round.playerCards[client] = []deck.Card{round.roundDeck.Next(), round.roundDeck.Next()}
+		client.sendMessage <- CreateClientOwnCardMessage(round.playerCards[client])
+	}
+
+	return &round
+}
+
+func (game *Game) Bet(client *Client, ammount int) {
+	game.round.stageBets[client] = ammount
+	game.stacks[client] -= ammount
+}
+
+func StartRound(game *Game) {
+	round := game.round
+
+	//Small Blind
+	game.Bet(game.round.clients[(game.round.buttonIndex+1)%len(game.round.clients)], game.blind)
+	//Big Blind
+	game.Bet(game.round.clients[(game.round.buttonIndex+2)%len(game.round.clients)], game.blind*2)
+
+	//preflop
+	activePlayerIndex := (game.round.buttonIndex + 3) % len(game.round.clients)
+	betStage(game, round, activePlayerIndex)
+
+	//flop
+	floppedCards := round.roundDeck.Flop()
+	game.broadcast(CreateSendTableCards(floppedCards))
+	betStage(game, round, 1)
+
+	//turn
+	turnCard := round.roundDeck.TableCard()
+	game.broadcast(CreateSendTableCards(turnCard))
+	betStage(game, round, 1)
+
+	//river
+	riverCard := round.roundDeck.TableCard()
+	game.broadcast(CreateSendTableCards(riverCard))
+	betStage(game, round, 1)
+
+	//showdown
+
+	//nextRound
+	game.round = NewRound(game.clients, round.buttonIndex+1, round.roundCounter+1)
+	StartRound(game)
+}
+
+func betStage(game *Game, round *Round, activePlayerIndex int) {
+	activePlayers := activePlayersCount(round.folded)
+	clientsActions := 0
+	activePlayerIndex = round.nextActivePlayerIndex(activePlayerIndex)
+	for !isBetStageOver(round.stageBets, round.folded, clientsActions, activePlayers) {
+		maxBet := round.stageBets.maxBet()
+
+		minBet := maxBet - round.stageBets[game.clients[activePlayerIndex]]
+		game.broadcast(CreateActivePlayerMessage(round.clients[activePlayerIndex], minBet))
+		bettingStageMessagesHandler(game, activePlayerIndex)
+		activePlayerIndex = round.nextActivePlayerIndex((activePlayerIndex + 1) % len(round.clients))
 		clientsActions++
 	}
-	clientBets.add(stageBets)
-	stageBets.reset()
+	round.clientBets.add(round.stageBets)
+	round.stageBets.reset()
+}
+
+func (stageBets bets) maxBet() int {
+	maxBet := 0
+	for _, bet := range stageBets {
+		if bet > maxBet {
+			maxBet = bet
+		}
+	}
+	return maxBet
+}
+
+func (round *Round) nextActivePlayerIndex(index int) int {
+	activePlayerIndex := index
+	for round.folded[round.clients[activePlayerIndex]] {
+		activePlayerIndex = (activePlayerIndex + 1) % len(round.clients)
+	}
+	return activePlayerIndex
 }
 
 func (bets bets) add(from map[*Client]int) {
@@ -127,21 +161,22 @@ func (bets bets) reset() {
 	}
 }
 
-func isBetStageOver(stageBets map[*Client]int, folded map[*Client]bool, betStageFolded map[*Client]bool, clientsActions int) bool {
-	return (areBetsEqual(stageBets, folded) && allActed(clientsActions, betStageFolded))
+func isBetStageOver(stageBets map[*Client]int, folded map[*Client]bool, clientsActions int, activePlayers int) bool {
+	return (areBetsEqual(stageBets, folded) && allActed(clientsActions, activePlayers))
 }
 
-func allActed(clientsActions int, folded map[*Client]bool) bool {
-	activeClients := 0
+func activePlayersCount(folded map[*Client]bool) int {
+	activePlayers := 0
 	for _, fold := range folded {
 		if !fold {
-			activeClients++
+			activePlayers++
 		}
 	}
-	if activeClients > clientsActions {
-		return false
-	}
-	return true
+	return activePlayers
+}
+
+func allActed(clientsActionsCount, activePlayersCount int) bool {
+	return clientsActionsCount >= activePlayersCount
 }
 
 func areBetsEqual(bets map[*Client]int, folded map[*Client]bool) bool {
@@ -157,25 +192,28 @@ func areBetsEqual(bets map[*Client]int, folded map[*Client]bool) bool {
 	return true
 }
 
-func bettingStageMessagesHandler(game *Game, activePlayerIndex int, stacks map[*Client]int, stageBets bets, folded map[*Client]bool) {
+func bettingStageMessagesHandler(game *Game, activePlayerIndex int) {
 	for {
 		message := <-game.gameplayChan
-		if message.From == game.clients[activePlayerIndex] {
+		if message.From == game.round.clients[activePlayerIndex] {
 			switch message.Message.Type {
 			case "bet":
 				betSize := int(message.Message.Payload.(float64))
-				stacks[game.clients[activePlayerIndex]] -= betSize
-				stageBets[game.clients[activePlayerIndex]] += betSize
+				game.Bet(game.round.clients[activePlayerIndex], betSize)
 				message.From.broadcast(game, CreateBetMessage(message.From, betSize))
 			case "raise":
 			case "fold":
-				folded[game.clients[activePlayerIndex]] = true
+				game.round.folded[game.clients[activePlayerIndex]] = true
 				message.From.broadcast(game, CreateFoldMessage(message.From))
 			case "check":
 			}
 			break
 		}
 	}
+}
+
+func (game *Game) addClient(client *Client) {
+	game.clients = append(game.clients, client)
 }
 
 func (game *Game) broadcast(message interface{}) {
