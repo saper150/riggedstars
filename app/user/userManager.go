@@ -22,7 +22,7 @@ type responseForm struct {
 	Data   string
 }
 
-type loginAuthForm struct {
+type userResponseForm struct {
 	Data   models.User
 	Token  string
 	Status int
@@ -64,7 +64,12 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 	}
 	user := models.User{Name: userForm.Name, Password: string(bytesHash)}
 	db.Create(&user)
-	js, _ := json.Marshal(user)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &customClaims{
+		Name: user.Name,
+		ID:   user.ID,
+	})
+	tokenString, _ := token.SignedString(riggedKey)
+	js, _ := json.Marshal(userResponseForm{Data: user, Status: 200, Token: tokenString})
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(js)
 }
@@ -157,7 +162,7 @@ func login(w http.ResponseWriter, req *http.Request) {
 		ID:   user.ID,
 	})
 	tokenString, _ := token.SignedString(riggedKey)
-	jsAuth, _ := json.Marshal(loginAuthForm{Data: user, Token: "Bearer " + tokenString, Status: http.StatusOK})
+	jsAuth, _ := json.Marshal(userResponseForm{Data: user, Token: "Bearer " + tokenString, Status: http.StatusOK})
 	w.Write(jsAuth)
 
 }
