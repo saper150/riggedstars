@@ -10,23 +10,14 @@ type clientCommand struct {
 }
 
 type Room struct {
-<<<<<<< HEAD
-	ID       int
-	Name     string
-	Clients  map[*Client]bool
-	Commands chan clientCommand
-	Leave    chan *Client
-	Join     chan *Client
-	Game     *Game
-=======
 	ID         int
 	Name       string
 	Clients    map[*Client]bool
 	Commands   chan clientCommand
 	Leave      chan *Client
 	Join       chan *Client
+	Game       *Game
 	MaxClients int
->>>>>>> master
 }
 
 func (room *Room) run(hub *Hub) {
