@@ -33,11 +33,12 @@ func CreateSendTableCards(cards []deck.Card) interface{} {
 
 type TextMessage struct {
 	Type    string
+	Name    string
 	Payload string
 }
 
-func CreateTextMessage(text string) interface{} {
-	return TextMessage{"text", text}
+func CreateTextMessage(name, text string) interface{} {
+	return TextMessage{"text", name, text}
 }
 
 type BetMessage struct {

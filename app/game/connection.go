@@ -49,34 +49,41 @@ func (client *Client) serveListen() {
 }
 
 type Hub struct {
-	rooms map[int]*Room
+	rooms         map[int]*Room
+	lastRoomIndex int
 }
 
 func newHub() *Hub {
 	hub := &Hub{
 		rooms: make(map[int]*Room),
 	}
-	hub.rooms[0] = newRoom(0, "rom0")
-	hub.rooms[1] = newRoom(1, "rom1")
+	//TODO: rooms auto creation
+	hub.rooms[0] = newRoom(0, "room0", 4)
+	hub.rooms[1] = newRoom(1, "room1", 4)
+	hub.lastRoomIndex = 1
 	go hub.rooms[0].run(hub)
 	go hub.rooms[1].run(hub)
 	return hub
 }
 
-func newRoom(id int, name string) *Room {
+func newRoom(id int, name string, maxClients int) *Room {
 	return &Room{
-		ID:       id,
-		Clients:  make(map[*Client]bool),
-		Name:     name,
-		Commands: make(chan clientCommand),
-		Leave:    make(chan *Client),
-		Join:     make(chan *Client),
+		ID:         id,
+		Clients:    make(map[*Client]bool),
+		Name:       name,
+		Commands:   make(chan clientCommand),
+		Leave:      make(chan *Client),
+		Join:       make(chan *Client),
+		MaxClients: maxClients,
 	}
 }
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
 }
 
 func joinRoom(hub *Hub, w http.ResponseWriter, r *http.Request) {
@@ -128,4 +135,50 @@ func RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("", func(w http.ResponseWriter, r *http.Request) {
 		joinRoom(hub, w, r)
 	})
+	router.HandleFunc("/roomList", hub.getRoomList).Methods("GET")
+	router.HandleFunc("/createRoom", hub.createRoom).Methods("POST")
+}
+
+type roomInfo struct {
+	ID int
+	//TODO: change to clients
+	ClientsCount int
+	Name         string
+	MaxClients   int
+}
+
+func (hub *Hub) getRoomList(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("content-type", "application/json")
+	rooms := make([]roomInfo, len(hub.rooms))
+
+	for i := 0; i < len(hub.rooms); i++ {
+		rooms[i] = roomInfo{ID: hub.rooms[i].ID, Name: hub.rooms[i].Name, ClientsCount: len(hub.rooms[i].Clients), MaxClients: hub.rooms[i].MaxClients}
+	}
+	js, err := json.Marshal(rooms)
+	if err == nil {
+		w.Write([]byte(js))
+	} else {
+		w.WriteHeader(http.StatusBadRequest)
+	}
+}
+
+type CreateRoomForm struct {
+	Name       string
+	MaxClients int
+}
+
+func (hub *Hub) createRoom(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("content-type", "text/html")
+	decoder := json.NewDecoder(r.Body)
+	var newRoomForm CreateRoomForm
+	err := decoder.Decode(&newRoomForm)
+	if err != nil {
+		http.Error(w, "Error in decoding request body", http.StatusBadRequest)
+		return
+	}
+	newID := hub.lastRoomIndex + 1
+	hub.lastRoomIndex += 1
+	hub.rooms[newID] = newRoom(newID, newRoomForm.Name, newRoomForm.MaxClients)
+	go hub.rooms[newID].run(hub)
+	w.Write([]byte("room created"))
 }

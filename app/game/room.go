@@ -10,6 +10,7 @@ type clientCommand struct {
 }
 
 type Room struct {
+<<<<<<< HEAD
 	ID       int
 	Name     string
 	Clients  map[*Client]bool
@@ -17,6 +18,15 @@ type Room struct {
 	Leave    chan *Client
 	Join     chan *Client
 	Game     *Game
+=======
+	ID         int
+	Name       string
+	Clients    map[*Client]bool
+	Commands   chan clientCommand
+	Leave      chan *Client
+	Join       chan *Client
+	MaxClients int
+>>>>>>> master
 }
 
 func (room *Room) run(hub *Hub) {
@@ -57,7 +67,7 @@ func (client *Client) handleRoom(room *Room) {
 func handleMessages(room *Room, command clientCommand) {
 	switch command.Message.Type {
 	case "text":
-		textMessage := CreateTextMessage(command.Message.Payload.(string))
+		textMessage := CreateTextMessage(command.From.user.Name, command.Message.Payload.(string))
 		room.sendToEveryOneExcept(command.From, textMessage)
 	case "startGame":
 		room.Game = StartGame(room.Clients)
