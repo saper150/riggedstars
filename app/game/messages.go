@@ -80,19 +80,3 @@ type PlayerMessage struct {
 	ID   uint
 	Name string
 }
-
-type TestClientMsg struct {
-	Clients []Test
-}
-type Test struct {
-	Index int
-	Name  string
-}
-
-func CreateTestMsg(clients []*Client) interface{} {
-	test := make([]Test, 0)
-	for i, client := range clients {
-		test = append(test, Test{i, client.user.Name})
-	}
-	return TestClientMsg{test}
-}

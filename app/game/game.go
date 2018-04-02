@@ -44,7 +44,7 @@ func StartGame(clients map[*Client]bool) *Game {
 type Round struct {
 	buttonIndex  int
 	roundCounter int
-	roundDeck    deck.Deck //?
+	roundDeck    deck.Deck
 	stageBets    bets
 	clientBets   bets
 	folded       map[*Client]bool
@@ -76,12 +76,11 @@ func NewRound(players []*Client, nextButtonIndex, nextRoundCounter int) *Round {
 }
 
 func (game *Game) Bet(client *Client, ammount int) {
-	game.round.stageBets[client] = ammount
+	game.round.stageBets[client] += ammount
 	game.stacks[client] -= ammount
 }
 
 func StartRound(game *Game) {
-	round := game.round
 
 	//Small Blind
 	game.Bet(game.round.clients[(game.round.buttonIndex+1)%len(game.round.clients)], game.blind)
@@ -90,27 +89,28 @@ func StartRound(game *Game) {
 
 	//preflop
 	activePlayerIndex := (game.round.buttonIndex + 3) % len(game.round.clients)
-	betStage(game, round, activePlayerIndex)
+	betStage(game, game.round, activePlayerIndex)
 
 	//flop
-	floppedCards := round.roundDeck.Flop()
+	floppedCards := game.round.roundDeck.Flop()
 	game.broadcast(CreateSendTableCards(floppedCards))
-	betStage(game, round, 1)
+	betStage(game, game.round, 1)
 
 	//turn
-	turnCard := round.roundDeck.TableCard()
+	turnCard := game.round.roundDeck.TableCard()
 	game.broadcast(CreateSendTableCards(turnCard))
-	betStage(game, round, 1)
+	betStage(game, game.round, 1)
 
 	//river
-	riverCard := round.roundDeck.TableCard()
+	riverCard := game.round.roundDeck.TableCard()
 	game.broadcast(CreateSendTableCards(riverCard))
-	betStage(game, round, 1)
+	betStage(game, game.round, 1)
 
 	//showdown
 
 	//nextRound
-	game.round = NewRound(game.clients, round.buttonIndex+1, round.roundCounter+1)
+	//TODO: send end round message to reset state
+	game.round = NewRound(game.clients, game.round.buttonIndex+1, game.round.roundCounter+1)
 	StartRound(game)
 }
 
@@ -118,7 +118,7 @@ func betStage(game *Game, round *Round, activePlayerIndex int) {
 	activePlayers := activePlayersCount(round.folded)
 	clientsActions := 0
 	activePlayerIndex = round.nextActivePlayerIndex(activePlayerIndex)
-	for !isBetStageOver(round.stageBets, round.folded, clientsActions, activePlayers) {
+	for !isBetStageOver(game.round.stageBets, game.round.folded, clientsActions, activePlayers) {
 		maxBet := round.stageBets.maxBet()
 
 		minBet := maxBet - round.stageBets[game.clients[activePlayerIndex]]
