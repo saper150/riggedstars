@@ -2,6 +2,7 @@ package game
 
 import (
 	"riggedstars/app/deck"
+	"time"
 )
 
 type bets map[*Client]int
@@ -80,60 +81,81 @@ func (game *Game) Bet(client *Client, ammount int) {
 	game.stacks[client] -= ammount
 }
 
+func (game *Game) Blind(client *Client, multi int) {
+	game.Bet(client, game.blind*multi)
+	game.broadcast(CreateBetMessage(client, game.blind*multi))
+}
+
 func StartRound(game *Game) {
 
+	game.broadcast(CreateStartRoundInfoMessage(game.stacks, game.round.clients[(game.round.buttonIndex)]))
+
 	//Small Blind
-	game.Bet(game.round.clients[(game.round.buttonIndex+1)%len(game.round.clients)], game.blind)
+	game.Blind(game.round.clients[(game.round.buttonIndex+1)%len(game.round.clients)], 1)
 	//Big Blind
-	game.Bet(game.round.clients[(game.round.buttonIndex+2)%len(game.round.clients)], game.blind*2)
+	game.Blind(game.round.clients[(game.round.buttonIndex+2)%len(game.round.clients)], 2)
 
 	//preflop
-	activePlayerIndex := (game.round.buttonIndex + 3) % len(game.round.clients)
-	betStage(game, game.round, activePlayerIndex)
+	betStage(game, (game.round.buttonIndex+3)%len(game.round.clients))
 
 	//flop
-	floppedCards := game.round.roundDeck.Flop()
-	game.broadcast(CreateSendTableCards(floppedCards))
-	betStage(game, game.round, 1)
+	if game.round.activePlayersCount() > 1 {
+		floppedCards := game.round.roundDeck.Flop()
+		game.broadcast(CreateSendTableCards(floppedCards))
+		betStage(game, 1)
+	}
 
 	//turn
-	turnCard := game.round.roundDeck.TableCard()
-	game.broadcast(CreateSendTableCards(turnCard))
-	betStage(game, game.round, 1)
+	if game.round.activePlayersCount() > 1 {
+		turnCard := game.round.roundDeck.TableCard()
+		game.broadcast(CreateSendTableCards(turnCard))
+		betStage(game, 1)
+	}
 
 	//river
-	riverCard := game.round.roundDeck.TableCard()
-	game.broadcast(CreateSendTableCards(riverCard))
-	betStage(game, game.round, 1)
-
+	if game.round.activePlayersCount() > 1 {
+		riverCard := game.round.roundDeck.TableCard()
+		game.broadcast(CreateSendTableCards(riverCard))
+		betStage(game, 1)
+	}
 	//showdown
 
 	//nextRound
-	//TODO: send end round message to reset state
-	game.round = NewRound(game.clients, game.round.buttonIndex+1, game.round.roundCounter+1)
+	game.broadcast(CreateEndRoundMessage())
+
+	time.Sleep(time.Second * 3)
+
+	game.round = NewRound(game.clients, game.nextPlayerIndex(game.round.buttonIndex), game.round.roundCounter+1)
 	StartRound(game)
 }
 
-func betStage(game *Game, round *Round, activePlayerIndex int) {
-	activePlayers := activePlayersCount(round.folded)
+func betStage(game *Game, activePlayerIndex int) {
 	clientsActions := 0
-	activePlayerIndex = round.nextActivePlayerIndex(activePlayerIndex)
-	for !isBetStageOver(game.round.stageBets, game.round.folded, clientsActions, activePlayers) {
-		maxBet := round.stageBets.maxBet()
-
-		minBet := maxBet - round.stageBets[game.clients[activePlayerIndex]]
-		game.broadcast(CreateActivePlayerMessage(round.clients[activePlayerIndex], minBet))
+	activePlayerIndex = game.round.nextActivePlayerIndex(activePlayerIndex)
+	activePlayersOnStart := game.round.activePlayersCount()
+	for !isBetStageOver(game.round, clientsActions, activePlayersOnStart) {
+		maxBet := game.round.maxBet()
+		minBet := maxBet - game.round.stageBets[game.round.clients[activePlayerIndex]]
+		game.broadcast(CreateActivePlayerMessage(game.round.clients[activePlayerIndex], minBet))
 		bettingStageMessagesHandler(game, activePlayerIndex)
-		activePlayerIndex = round.nextActivePlayerIndex((activePlayerIndex + 1) % len(round.clients))
+		activePlayerIndex = game.round.nextActivePlayerIndex((activePlayerIndex + 1) % len(game.round.clients))
 		clientsActions++
 	}
-	round.clientBets.add(round.stageBets)
-	round.stageBets.reset()
+	game.round.clientBets.add(game.round.stageBets)
+	game.round.stageBets.reset()
 }
 
-func (stageBets bets) maxBet() int {
+func (game *Game) nextPlayerIndex(index int) int {
+	nextPlayerIndex := (index + 1) % len(game.clients)
+	for game.clients[nextPlayerIndex] == nil {
+		nextPlayerIndex = (nextPlayerIndex + 1) % len(game.clients)
+	}
+	return nextPlayerIndex
+}
+
+func (round *Round) maxBet() int {
 	maxBet := 0
-	for _, bet := range stageBets {
+	for _, bet := range round.stageBets {
 		if bet > maxBet {
 			maxBet = bet
 		}
@@ -161,22 +183,18 @@ func (bets bets) reset() {
 	}
 }
 
-func isBetStageOver(stageBets map[*Client]int, folded map[*Client]bool, clientsActions int, activePlayers int) bool {
-	return (areBetsEqual(stageBets, folded) && allActed(clientsActions, activePlayers))
+func isBetStageOver(round *Round, clientsActions, activePlayersOnStart int) bool {
+	return (areBetsEqual(round.stageBets, round.folded) && (clientsActions >= activePlayersOnStart || round.activePlayersCount() == 1))
 }
 
-func activePlayersCount(folded map[*Client]bool) int {
+func (round *Round) activePlayersCount() int {
 	activePlayers := 0
-	for _, fold := range folded {
+	for _, fold := range round.folded {
 		if !fold {
 			activePlayers++
 		}
 	}
 	return activePlayers
-}
-
-func allActed(clientsActionsCount, activePlayersCount int) bool {
-	return clientsActionsCount >= activePlayersCount
 }
 
 func areBetsEqual(bets map[*Client]int, folded map[*Client]bool) bool {
@@ -203,7 +221,7 @@ func bettingStageMessagesHandler(game *Game, activePlayerIndex int) {
 				message.From.broadcast(game, CreateBetMessage(message.From, betSize))
 			case "raise":
 			case "fold":
-				game.round.folded[game.clients[activePlayerIndex]] = true
+				game.round.folded[game.round.clients[activePlayerIndex]] = true
 				message.From.broadcast(game, CreateFoldMessage(message.From))
 			case "check":
 			}

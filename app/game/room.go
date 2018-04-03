@@ -36,6 +36,7 @@ func (room *Room) run(hub *Hub) {
 			room.Clients[client] = true
 			go client.handleRoom(room)
 			room.sendToEveryOneExcept(client, NewUserMessage(client.user))
+			//TODO: consider changing it
 			if room.Game != nil {
 				room.Game.addClient(client)
 			}

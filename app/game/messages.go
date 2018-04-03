@@ -1,9 +1,23 @@
 package game
 
 import (
+	"fmt"
 	"riggedstars/app/deck"
 	"riggedstars/app/models"
 )
+
+//	messages:
+//	newUser
+//	deleteUser
+//	ownCards
+//	tableCards
+//	text
+//	bet
+//	fold
+//	activePlayer
+//	button
+//	startRound
+//	endRound
 
 type UserMessage struct {
 	Type    string
@@ -79,4 +93,27 @@ type PlayerMessage struct {
 	Type string
 	ID   uint
 	Name string
+}
+
+type StartRoundInfoMessage struct {
+	Type         string
+	Stacks       map[string]int
+	ButtonClient models.User
+}
+
+func CreateStartRoundInfoMessage(gameStacks map[*Client]int, buttonClient *Client) interface{} {
+	stacks := make(map[string]int)
+	for client, stack := range gameStacks {
+		stacks[fmt.Sprintf("%d", client.user.ID)] = stack
+	}
+	return StartRoundInfoMessage{"startRound", stacks, buttonClient.user}
+}
+
+type EndRoundMessage struct {
+	Type string
+	//Winner models.User
+}
+
+func CreateEndRoundMessage() interface{} {
+	return EndRoundMessage{"endRound"}
 }
