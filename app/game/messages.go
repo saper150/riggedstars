@@ -1,7 +1,6 @@
 package game
 
 import (
-	"fmt"
 	"riggedstars/app/deck"
 	"riggedstars/app/models"
 	"strconv"
@@ -98,21 +97,22 @@ type PlayerMessage struct {
 
 type StartRoundInfoMessage struct {
 	Type         string
-	Players      map[string]models.User
-	Stacks       map[string]int
+	Players      map[string]PlayerInfo
 	ButtonClient models.User
 }
 
+type PlayerInfo struct {
+	ID    uint
+	Name  string
+	Stack int
+}
+
 func CreateStartRoundInfoMessage(clients map[int]*Client, gameStacks map[*Client]int, buttonClient *Client) interface{} {
-	players := make(map[string]models.User)
+	players := make(map[string]PlayerInfo)
 	for seatID, client := range clients {
-		players[strconv.Itoa(seatID)] = client.user
+		players[strconv.Itoa(seatID)] = PlayerInfo{client.user.ID, client.user.Name, gameStacks[client]}
 	}
-	stacks := make(map[string]int)
-	for client, stack := range gameStacks {
-		stacks[fmt.Sprintf("%d", client.user.ID)] = stack
-	}
-	return StartRoundInfoMessage{"startRound", players, stacks, buttonClient.user}
+	return StartRoundInfoMessage{"startRound", players, buttonClient.user}
 }
 
 type EndRoundMessage struct {

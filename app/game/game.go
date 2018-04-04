@@ -263,6 +263,7 @@ func (game *Game) addClient(client *Client) {
 	}
 	game.clients[index] = client
 	game.stacks[client] = game.startingStack
+	game.clientsState[client] = true
 }
 
 func (game *Game) deleteClient(client *Client) {
