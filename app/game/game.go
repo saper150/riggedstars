@@ -135,6 +135,7 @@ func StartRound(game *Game) {
 		betStage(game, 1)
 	}
 	//showdown
+	//TODO: compare hands and pick a winner
 
 	//nextRound
 	game.broadcast(CreateEndRoundMessage())
@@ -292,11 +293,4 @@ func (me *Client) broadcast(game *Game, message interface{}) {
 			client.sendMessage <- message
 		}
 	}
-}
-
-func getWinner(playerCards map[*Client][]deck.Card) *Client {
-	for client := range playerCards {
-		return client
-	}
-	return nil
 }

@@ -6,19 +6,6 @@ import (
 	"strconv"
 )
 
-//	messages:
-//	newUser
-//	deleteUser
-//	ownCards
-//	tableCards
-//	text
-//	bet
-//	fold
-//	activePlayer
-//	button
-//	startRound
-//	endRound
-
 type UserMessage struct {
 	Type    string
 	Payload models.User
@@ -117,7 +104,6 @@ func CreateStartRoundInfoMessage(clients map[int]*Client, gameStacks map[*Client
 
 type EndRoundMessage struct {
 	Type string
-	//Winner models.User
 }
 
 func CreateEndRoundMessage() interface{} {

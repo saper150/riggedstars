@@ -57,7 +57,6 @@ func newHub() *Hub {
 	hub := &Hub{
 		rooms: make(map[int]*Room),
 	}
-	//TODO: rooms auto creation
 	hub.rooms[0] = newRoom(0, "room0", 4)
 	hub.rooms[1] = newRoom(1, "room1", 4)
 	hub.lastRoomIndex = 1
@@ -140,8 +139,7 @@ func RegisterRoutes(router *mux.Router) {
 }
 
 type roomInfo struct {
-	ID int
-	//TODO: change to clients
+	ID           int
 	ClientsCount int
 	Name         string
 	MaxClients   int
