@@ -21,6 +21,18 @@
         <button onclick="connect()">connect</button>
         <button onclick="disconnect()">disconnect</button>
     </div>
+    <button onclick="startGame()" >start game</button>
+
+    <div>
+        <label>
+            bet amount
+            <input type="number" id="bet">
+        </label>
+        <button onclick="bet()">bet</button>
+        <button onclick="fold()">fold</button>
+    </div>
+
+
     <ul id="userList"></ul>
     <p>message room</p>
     <textarea id="roomMessage"></textarea>
@@ -74,6 +86,24 @@
 
     function renderUsers() {
         document.getElementById('userList').innerHTML = userList.map(user => `<li>${user.ID} ${user.Name}</li>`).join('')
+    }
+
+    function startGame(){
+        socket.send(JSON.stringify({
+            Type: "startGame"
+        }))
+    }
+    function bet(){
+        socket.send(JSON.stringify({
+            Type: "bet",
+            Payload: Number(document.getElementById("bet").value)
+        }))
+    }
+
+    function fold(){
+        socket.send(JSON.stringify({
+            Type: "fold",
+        }))
     }
 
     function sendMessageToRoom() {

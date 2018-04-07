@@ -9,6 +9,22 @@ type Card struct {
 
 type Deck []Card
 
+func (deck *Deck) Next() Card {
+	var card Card
+	card, *deck = (*deck)[0], (*deck)[1:]
+	return card
+}
+
+func (deck *Deck) Flop() []Card {
+	deck.Next()
+	return []Card{deck.Next(), deck.Next(), deck.Next()}
+}
+
+func (deck *Deck) TableCard() []Card {
+	deck.Next()
+	return []Card{deck.Next()}
+}
+
 func ShufeledDeck() Deck {
 
 	deck := make(Deck, 52)
@@ -16,7 +32,7 @@ func ShufeledDeck() Deck {
 	for i, suit := range []string{"clubs", "diamonds", "hearts", "spades"} {
 		for j := 0; j < 13; j++ {
 			deck[i*13+j].Suit = suit
-			deck[i*13+j].Value = j
+			deck[i*13+j].Value = j + 1
 		}
 	}
 
