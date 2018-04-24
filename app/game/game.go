@@ -58,6 +58,7 @@ type Round struct {
 	playerCards  map[*Client][]deck.Card
 	clients      map[int]*Client
 	maxPlayers   int
+	tableCards   []deck.Card
 }
 
 func NewRound(players map[int]*Client, nextButtonIndex, nextRoundCounter, maxClients int) *Round {
@@ -71,6 +72,7 @@ func NewRound(players map[int]*Client, nextButtonIndex, nextRoundCounter, maxCli
 		roundCounter: nextRoundCounter,
 		clients:      players,
 		maxPlayers:   maxClients,
+		tableCards:   make([]deck.Card, 0),
 	}
 
 	for _, client := range round.clients {
@@ -117,6 +119,7 @@ func StartRound(game *Game) {
 	//flop
 	if game.round.activePlayersCount() > 1 {
 		floppedCards := game.round.roundDeck.Flop()
+		game.round.tableCards = append(game.round.tableCards, floppedCards...)
 		game.broadcast(CreateSendTableCards(floppedCards))
 		betStage(game, 1)
 	}
@@ -124,6 +127,7 @@ func StartRound(game *Game) {
 	//turn
 	if game.round.activePlayersCount() > 1 {
 		turnCard := game.round.roundDeck.TableCard()
+		game.round.tableCards = append(game.round.tableCards, turnCard...)
 		game.broadcast(CreateSendTableCards(turnCard))
 		betStage(game, 1)
 	}
@@ -131,17 +135,25 @@ func StartRound(game *Game) {
 	//river
 	if game.round.activePlayersCount() > 1 {
 		riverCard := game.round.roundDeck.TableCard()
+		game.round.tableCards = append(game.round.tableCards, riverCard...)
 		game.broadcast(CreateSendTableCards(riverCard))
 		betStage(game, 1)
 	}
 	//showdown
-	//TODO: compare hands and pick a winner
+	var winner *Client
+	if game.round.activePlayersCount() > 1 {
+		winner = getWinnerHand(game.round.tableCards, game.round.playerCards)
+	} else {
+		//TODO: won last man standing
+
+	}
 
 	//nextRound
-	game.broadcast(CreateEndRoundMessage())
+	game.broadcast(CreateEndRoundMessage(winner))
 
 	game.deleteDisconnectedClients()
 
+	//TODO: evade using sleep
 	time.Sleep(time.Second * 3)
 
 	game.round = NewRound(game.clients, game.nextPlayerIndex(game.round.buttonIndex), game.round.roundCounter+1, game.maxPlayers)

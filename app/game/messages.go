@@ -104,8 +104,10 @@ func CreateStartRoundInfoMessage(clients map[int]*Client, gameStacks map[*Client
 
 type EndRoundMessage struct {
 	Type string
+	ID   uint
+	Name string
 }
 
-func CreateEndRoundMessage() interface{} {
-	return EndRoundMessage{"endRound"}
+func CreateEndRoundMessage(client *Client) interface{} {
+	return EndRoundMessage{"endRound", client.user.ID, client.user.Name}
 }
