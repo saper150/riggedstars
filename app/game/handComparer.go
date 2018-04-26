@@ -20,33 +20,91 @@ const (
 
 type histogram map[int]int
 
-func getWinnerHand(tableCards []deck.Card, clientCards map[*Client][]deck.Card) *Client {
+func getWinnerHand(tableCards []deck.Card, clientCards map[*Client][]deck.Card) []*Client {
 
+	fullPlayerCards := make(map[*Client][]deck.Card)
 	bestTypeSoFar := make(map[*Client]int)
 	for client, cards := range clientCards {
-		fullPlayerCards := append(tableCards, cards...)
-		bestTypeSoFar[client] = groupByValue(fullPlayerCards).getHistogramHand()
-		straight, _ := isStraight(fullPlayerCards)
+		fullPlayerCards[client] = append(tableCards, cards...)
+		bestTypeSoFar[client] = groupByValue(fullPlayerCards[client]).getHistogramHand()
+		straight, _ := isStraight(fullPlayerCards[client])
 		if straight {
 			if bestTypeSoFar[client] < Straight {
 				bestTypeSoFar[client] = Straight
 			}
 		}
 
-		flush, _ := isFlush(fullPlayerCards)
+		flush, _ := isFlush(fullPlayerCards[client])
 		if flush {
 			if bestTypeSoFar[client] < Flush {
 				bestTypeSoFar[client] = Flush
 			}
 		}
 
-		if straightFlush, _ := isStraightFlush(fullPlayerCards); straightFlush {
+		if straightFlush, _ := isStraightFlush(fullPlayerCards[client]); straightFlush {
 			bestTypeSoFar[client] = StraightFlush
 		}
-
 	}
 
-	return bestHandType(bestTypeSoFar)
+	tiedTypePlayers, maxType := bestHandType(bestTypeSoFar, fullPlayerCards)
+
+	winners := resolveTie(tiedTypePlayers, maxType)
+	winnersArr := make([]*Client, 0)
+
+	for client, _ := range winners {
+		winnersArr = append(winnersArr, client)
+	}
+
+	return winnersArr
+
+}
+
+func resolveTie(tiedPlayersCards map[*Client][]deck.Card, maxType int) map[*Client][]deck.Card {
+	switch maxType {
+	case HighCard:
+		return resolveHighCardTie(tiedPlayersCards)
+	default:
+		return tiedPlayersCards
+	}
+}
+
+func resolveHighCardTie(playerCards map[*Client][]deck.Card) map[*Client][]deck.Card {
+
+	for _, cards := range playerCards {
+
+		sort.Slice(cards, func(i, j int) bool {
+			if cards[i].Value == 1 {
+				return true
+			}
+			if cards[j].Value == 1 {
+				return false
+			}
+			return cards[i].Value > cards[j].Value
+		})
+	}
+	for i := 0; i < 5; i++ {
+		maxCard := 0
+		for _, cards := range playerCards {
+			if maxCard == 1 || cards[i].Value == 1 {
+				maxCard = 1
+			} else if cards[i].Value > maxCard {
+				maxCard = cards[i].Value
+			}
+		}
+		tempPlayerCards := make(map[*Client][]deck.Card)
+		for client, cards := range playerCards {
+			if cards[i].Value == maxCard {
+				tempPlayerCards[client] = cards
+			}
+		}
+		playerCards = tempPlayerCards
+	}
+
+	return playerCards
+}
+
+func reolvePairTie() {
+
 }
 
 func groupByValue(cards []deck.Card) histogram {
@@ -140,15 +198,21 @@ func (data histogram) isTwoPair() bool {
 	return counter >= 2
 }
 
-func bestHandType(bestHands map[*Client]int) *Client {
+func bestHandType(bestHands map[*Client]int, cards map[*Client][]deck.Card) (map[*Client][]deck.Card, int) {
 
-	var winningPlayer *Client
+	tiedPlayers := make(map[*Client][]deck.Card)
 	maxType := -1
-	for client, handType := range bestHands {
+	for _, handType := range bestHands {
 		if handType > maxType {
 			maxType = handType
-			winningPlayer = client
 		}
 	}
-	return winningPlayer
+
+	for client, handType := range bestHands {
+		if handType == maxType {
+			tiedPlayers[client] = cards[client]
+		}
+	}
+
+	return tiedPlayers, maxType
 }

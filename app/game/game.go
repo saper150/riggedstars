@@ -140,16 +140,16 @@ func StartRound(game *Game) {
 		betStage(game, 1)
 	}
 	//showdown
-	var winner *Client
+	winners := make([]*Client, 0)
 	if game.round.activePlayersCount() > 1 {
-		winner = getWinnerHand(game.round.tableCards, game.round.playerCards)
+		winners = getWinnerHand(game.round.tableCards, game.round.playerCards)
 	} else {
 		//TODO: won last man standing
 
 	}
 
 	//nextRound
-	game.broadcast(CreateEndRoundMessage(winner))
+	game.broadcast(CreateEndRoundMessage(winners))
 
 	game.deleteDisconnectedClients()
 
