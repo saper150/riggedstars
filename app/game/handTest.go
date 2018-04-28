@@ -6,26 +6,44 @@ import (
 )
 
 func RunTests() {
-	testHistogramHandCompareThreeOfAKindVsFullHouse()
-	testHistogramHandCompareThreeOfAKindVsPair()
-	testHistogramHandCompareFourOfAKindVsPair()
-	testHistogramHandCompareFourOfAKindVsThreeOfAKind()
-	testHistogramHandCompareFourOfAKindVsFullHouse()
-	testHandComparePairVsStraight()
-	testHandComparePairVsFlush()
-	testHandCompareStraightVsFlush()
-	testHandCompareFlushVsStraightFlush()
-	testHandCompareStraightVsStraightFlush()
-	testHandCompareHighCardvsHighCardTier1()
-	testHandCompareHighCardvsHighCardTier2()
-	testHandCompareHighCardvsHighCardTier3()
-	testHandCompareHighCardvsHighCardTier4()
-	testHandCompareHighCardvsHighCardTier5()
-	testHandCompareHighCardvsHighCardTie()
-	testHandCompareHighCardvsHighCardAce1()
+	tests := []func() (string, bool, string){
+		testHistogramHandCompareThreeOfAKindVsFullHouse,
+		testHistogramHandCompareThreeOfAKindVsPair,
+		testHistogramHandCompareFourOfAKindVsPair,
+		testHistogramHandCompareFourOfAKindVsThreeOfAKind,
+		testHistogramHandCompareFourOfAKindVsFullHouse,
+		testHandComparePairVsStraight,
+		testHandComparePairVsFlush,
+		testHandCompareStraightVsFlush,
+		testHandCompareFlushVsStraightFlush,
+		testHandCompareStraightVsStraightFlush,
+		testHistogramHandCompareTwoPairVsPair,
+		testHandCompareHighCardvsHighCardTier1,
+		testHandCompareHighCardvsHighCardTier2,
+		testHandCompareHighCardvsHighCardTier3,
+		testHandCompareHighCardvsHighCardTier4,
+		testHandCompareHighCardvsHighCardTier5,
+		testHandCompareHighCardvsHighCardTie,
+		testHandCompareHighCardvsHighCardAce1,
+		testHandComparePairVsPair,
+		testHandComparePairVsPair2,
+		testHandComparePairVsPairTie,
+	}
+
+	testCounter := 0
+	for _, test := range tests {
+		name, passed, result := test()
+		if passed == false {
+			fmt.Printf("Name: %s  Result: ", name)
+			fmt.Println(result)
+		} else {
+			testCounter++
+		}
+	}
+	fmt.Printf("Tests finished with %d/%d passed\n", testCounter, len(tests))
 }
 
-func testHistogramHandCompareThreeOfAKindVsPair() {
+func testHistogramHandCompareThreeOfAKindVsPair() (string, bool, string) {
 	tableCards := []deck.Card{
 		deck.Card{Value: 2, Suit: "clubs"},
 		deck.Card{Value: 4, Suit: "clubs"},
@@ -40,20 +58,48 @@ func testHistogramHandCompareThreeOfAKindVsPair() {
 
 	playerCards[player1] = []deck.Card{deck.Card{Value: 2}, deck.Card{Value: 3}}
 	playerCards[player2] = []deck.Card{deck.Card{Value: 6}, deck.Card{Value: 6}}
-	fmt.Println("Test is running comparision function pair vs three of a kind")
+	name := "comparision function pair vs three of a kind"
 	winners := getWinnerHand(tableCards, playerCards)
 	if len(winners) != 1 {
-		fmt.Println("Should be one winner")
+		return name, false, "Failed - Should be one winner"
 	}
 
 	if winners[0] == player2 {
-		fmt.Println("Test passed")
+		return name, true, "Test passed"
 	} else {
-		fmt.Println("Test failed three of a kind should beat pair")
+		return name, false, "Test failed three of a kind should beat pair"
 	}
 }
 
-func testHistogramHandCompareFourOfAKindVsPair() {
+func testHistogramHandCompareTwoPairVsPair() (string, bool, string) {
+	tableCards := []deck.Card{
+		deck.Card{Value: 2, Suit: "clubs"},
+		deck.Card{Value: 4, Suit: "clubs"},
+		deck.Card{Value: 6, Suit: "hearts"},
+		deck.Card{Value: 8, Suit: "hearts"},
+		deck.Card{Value: 9, Suit: "spades"},
+	}
+	playerCards := make(map[*Client][]deck.Card)
+
+	player1 := &Client{}
+	player2 := &Client{}
+
+	playerCards[player1] = []deck.Card{deck.Card{Value: 2}, deck.Card{Value: 3}}
+	playerCards[player2] = []deck.Card{deck.Card{Value: 6}, deck.Card{Value: 8}}
+	name := "comparision function pair vs two pair"
+	winners := getWinnerHand(tableCards, playerCards)
+	if len(winners) != 1 {
+		return name, false, "Failed - Should be one winner"
+	}
+
+	if winners[0] == player2 {
+		return name, true, "Test passed"
+	} else {
+		return name, false, "Test failed two pair should beat pair"
+	}
+}
+
+func testHistogramHandCompareFourOfAKindVsPair() (string, bool, string) {
 	tableCards := []deck.Card{
 		deck.Card{Value: 2, Suit: "clubs"},
 		deck.Card{Value: 4, Suit: "clubs"},
@@ -68,20 +114,20 @@ func testHistogramHandCompareFourOfAKindVsPair() {
 
 	playerCards[player1] = []deck.Card{deck.Card{Value: 2}, deck.Card{Value: 3}}
 	playerCards[player2] = []deck.Card{deck.Card{Value: 6}, deck.Card{Value: 6}}
-	fmt.Println("Test is running comparision function pair vs four of a kind")
+	name := "comparision function pair vs four of a kind"
 	winners := getWinnerHand(tableCards, playerCards)
 
 	if len(winners) != 1 {
-		fmt.Println("Should be one winner")
+		return name, false, "Failed - Should be one winner"
 	}
 	if winners[0] == player2 {
-		fmt.Println("Test passed")
+		return name, true, "Test passed"
 	} else {
-		fmt.Println("Test failed four of a kind should beat pair")
+		return name, false, "Test failed four of a kind should beat pair"
 	}
 }
 
-func testHistogramHandCompareFourOfAKindVsThreeOfAKind() {
+func testHistogramHandCompareFourOfAKindVsThreeOfAKind() (string, bool, string) {
 	tableCards := []deck.Card{
 		deck.Card{Value: 2, Suit: "clubs"},
 		deck.Card{Value: 6, Suit: "clubs"},
@@ -96,19 +142,19 @@ func testHistogramHandCompareFourOfAKindVsThreeOfAKind() {
 
 	playerCards[player1] = []deck.Card{deck.Card{Value: 5}, deck.Card{Value: 3}}
 	playerCards[player2] = []deck.Card{deck.Card{Value: 6}, deck.Card{Value: 10}}
-	fmt.Println("Test is running comparision function three of a kind vs Four of a kind")
+	name := "comparision function three of a kind vs Four of a kind"
 	winners := getWinnerHand(tableCards, playerCards)
 	if len(winners) != 1 {
-		fmt.Println("Should be one winner")
+		return name, false, "Failed - Should be one winner"
 	}
 	if winners[0] == player2 {
-		fmt.Println("Test passed")
+		return name, true, "Test passed"
 	} else {
-		fmt.Println("Test failed Four of a kind should beat three of a kind")
+		return name, false, "Test failed Four of a kind should beat three of a kind"
 	}
 }
 
-func testHistogramHandCompareFourOfAKindVsFullHouse() {
+func testHistogramHandCompareFourOfAKindVsFullHouse() (string, bool, string) {
 	tableCards := []deck.Card{
 		deck.Card{Value: 2, Suit: "clubs"},
 		deck.Card{Value: 4, Suit: "clubs"},
@@ -123,18 +169,18 @@ func testHistogramHandCompareFourOfAKindVsFullHouse() {
 
 	playerCards[player1] = []deck.Card{deck.Card{Value: 2}, deck.Card{Value: 2}}
 	playerCards[player2] = []deck.Card{deck.Card{Value: 6}, deck.Card{Value: 6}}
-	fmt.Println("Test is running comparision function full house vs four of a kind")
+	name := "comparision function full house vs four of a kind"
 	winners := getWinnerHand(tableCards, playerCards)
 	if len(winners) != 1 {
-		fmt.Println("Should be one winner")
+		return name, false, "Failed - Should be one winner"
 	}
 	if winners[0] == player2 {
-		fmt.Println("Test passed")
+		return name, true, "Test passed"
 	} else {
-		fmt.Println("Test failed four of a kind should beat full house")
+		return name, false, "Test failed four of a kind should beat full house"
 	}
 }
-func testHistogramHandCompareThreeOfAKindVsFullHouse() {
+func testHistogramHandCompareThreeOfAKindVsFullHouse() (string, bool, string) {
 	tableCards := []deck.Card{
 		deck.Card{Value: 2, Suit: "clubs"},
 		deck.Card{Value: 6, Suit: "clubs"},
@@ -149,19 +195,19 @@ func testHistogramHandCompareThreeOfAKindVsFullHouse() {
 
 	playerCards[player1] = []deck.Card{deck.Card{Value: 2}, deck.Card{Value: 3}}
 	playerCards[player2] = []deck.Card{deck.Card{Value: 10}, deck.Card{Value: 11}}
-	fmt.Println("Test is running comparision function full house vs three of a kind")
+	name := "comparision function full house vs three of a kind"
 	winners := getWinnerHand(tableCards, playerCards)
 	if len(winners) != 1 {
-		fmt.Println("Should be one winner")
+		return name, false, "Failed - Should be one winner"
 	}
 	if winners[0] == player1 {
-		fmt.Println("Test passed")
+		return name, true, "Test passed"
 	} else {
-		fmt.Println("Test failed full house should beat three of a kind")
+		return name, false, "Test failed full house should beat three of a kind"
 	}
 }
 
-func testHistogramHandComparePairVsHighCard() {
+func testHistogramHandComparePairVsHighCard() (string, bool, string) {
 	tableCards := []deck.Card{
 		deck.Card{Value: 2, Suit: "clubs"},
 		deck.Card{Value: 4, Suit: "clubs"},
@@ -176,19 +222,19 @@ func testHistogramHandComparePairVsHighCard() {
 
 	playerCards[player1] = []deck.Card{deck.Card{Value: 2}, deck.Card{Value: 3}}
 	playerCards[player2] = []deck.Card{deck.Card{Value: 10}, deck.Card{Value: 12}}
-	fmt.Println("Test is running comparision function pair vs high card")
+	name := "comparision function pair vs high card"
 	winners := getWinnerHand(tableCards, playerCards)
 	if len(winners) != 1 {
-		fmt.Println("Should be one winner")
+		return name, false, "Failed - Should be one winner"
 	}
 	if winners[0] == player1 {
-		fmt.Println("Test passed")
+		return name, true, "Test passed"
 	} else {
-		fmt.Println("Test failed pair should beat high card")
+		return name, false, "Test failed pair should beat high card"
 	}
 }
 
-func testHandComparePairVsStraight() {
+func testHandComparePairVsStraight() (string, bool, string) {
 	tableCards := []deck.Card{
 		deck.Card{Value: 2, Suit: "clubs"},
 		deck.Card{Value: 4, Suit: "clubs"},
@@ -203,19 +249,19 @@ func testHandComparePairVsStraight() {
 
 	playerCards[player1] = []deck.Card{deck.Card{Value: 2}, deck.Card{Value: 3}}
 	playerCards[player2] = []deck.Card{deck.Card{Value: 5}, deck.Card{Value: 7}}
-	fmt.Println("Test is running comparision function pair vs straight")
+	name := "comparision function pair vs straight"
 	winners := getWinnerHand(tableCards, playerCards)
 	if len(winners) != 1 {
-		fmt.Println("Should be one winner")
+		return name, false, "Failed - Should be one winner"
 	}
 	if winners[0] == player2 {
-		fmt.Println("Test passed")
+		return name, true, "Test passed"
 	} else {
-		fmt.Println("Test failed straight should beat pair")
+		return name, false, "Test failed straight should beat pair"
 	}
 }
 
-func testHandComparePairVsFlush() {
+func testHandComparePairVsFlush() (string, bool, string) {
 	tableCards := []deck.Card{
 		deck.Card{Value: 2, Suit: "clubs"},
 		deck.Card{Value: 4, Suit: "clubs"},
@@ -230,19 +276,19 @@ func testHandComparePairVsFlush() {
 
 	playerCards[player1] = []deck.Card{deck.Card{Value: 12, Suit: "clubs"}, deck.Card{Value: 3, Suit: "clubs"}}
 	playerCards[player2] = []deck.Card{deck.Card{Value: 2}, deck.Card{Value: 11}}
-	fmt.Println("Test is running comparision function pair vs flush")
+	name := "comparision function pair vs flush"
 	winners := getWinnerHand(tableCards, playerCards)
 	if len(winners) != 1 {
-		fmt.Println("Should be one winner")
+		return name, false, "Failed - Should be one winner"
 	}
 	if winners[0] == player1 {
-		fmt.Println("Test passed")
+		return name, true, "Test passed"
 	} else {
-		fmt.Println("Test failed flush should beat pair")
+		return name, false, "Test failed flush should beat pair"
 	}
 }
 
-func testHandCompareStraightVsFlush() {
+func testHandCompareStraightVsFlush() (string, bool, string) {
 	tableCards := []deck.Card{
 		deck.Card{Value: 2, Suit: "clubs"},
 		deck.Card{Value: 4, Suit: "clubs"},
@@ -257,19 +303,19 @@ func testHandCompareStraightVsFlush() {
 
 	playerCards[player1] = []deck.Card{deck.Card{Value: 2, Suit: "clubs"}, deck.Card{Value: 3, Suit: "clubs"}}
 	playerCards[player2] = []deck.Card{deck.Card{Value: 5}, deck.Card{Value: 7}}
-	fmt.Println("Test is running comparision function straight vs flush")
+	name := "comparision function straight vs flush"
 	winners := getWinnerHand(tableCards, playerCards)
 	if len(winners) != 1 {
-		fmt.Println("Should be one winner")
+		return name, false, "Failed - Should be one winner"
 	}
 	if winners[0] == player1 {
-		fmt.Println("Test passed")
+		return name, true, "Test passed"
 	} else {
-		fmt.Println("Test failed flush should beat straight")
+		return name, false, "Test failed flush should beat straight"
 	}
 }
 
-func testHandCompareFlushVsStraightFlush() {
+func testHandCompareFlushVsStraightFlush() (string, bool, string) {
 	tableCards := []deck.Card{
 		deck.Card{Value: 2, Suit: "clubs"},
 		deck.Card{Value: 4, Suit: "clubs"},
@@ -284,19 +330,19 @@ func testHandCompareFlushVsStraightFlush() {
 
 	playerCards[player1] = []deck.Card{deck.Card{Value: 2, Suit: "spades"}, deck.Card{Value: 3, Suit: "clubs"}}
 	playerCards[player2] = []deck.Card{deck.Card{Value: 5, Suit: "clubs"}, deck.Card{Value: 3, Suit: "clubs"}}
-	fmt.Println("Test is running comparision function flush vs straightflush")
+	name := "comparision function flush vs straightflush"
 	winners := getWinnerHand(tableCards, playerCards)
 	if len(winners) != 1 {
-		fmt.Println("Should be one winner")
+		return name, false, "Failed - Should be one winner"
 	}
 	if winners[0] == player2 {
-		fmt.Println("Test passed")
+		return name, true, "Test passed"
 	} else {
-		fmt.Println("Test failed straightflush should beat flush")
+		return name, false, "Test failed straightflush should beat flush"
 	}
 }
 
-func testHandCompareStraightVsStraightFlush() {
+func testHandCompareStraightVsStraightFlush() (string, bool, string) {
 	tableCards := []deck.Card{
 		deck.Card{Value: 2, Suit: "clubs"},
 		deck.Card{Value: 4, Suit: "clubs"},
@@ -311,20 +357,20 @@ func testHandCompareStraightVsStraightFlush() {
 
 	playerCards[player1] = []deck.Card{deck.Card{Value: 7, Suit: "clubs"}, deck.Card{Value: 10, Suit: "clubs"}}
 	playerCards[player2] = []deck.Card{deck.Card{Value: 7}, deck.Card{Value: 10}}
-	fmt.Println("Test is running comparision function pair vs straightflush")
+	name := "comparision function pair vs straightflush"
 	winners := getWinnerHand(tableCards, playerCards)
 
 	if len(winners) != 1 {
-		fmt.Println("Should be one winner")
+		return name, false, "Failed - Should be one winner"
 	}
 	if winners[0] == player1 {
-		fmt.Println("Test passed")
+		return name, true, "Test passed"
 	} else {
-		fmt.Println("Test failed straightflush should beat pair")
+		return name, false, "Test failed straightflush should beat pair"
 	}
 }
 
-func testHandCompareHighCardvsHighCardTier1() {
+func testHandCompareHighCardvsHighCardTier1() (string, bool, string) {
 	tableCards := []deck.Card{
 		deck.Card{Value: 6, Suit: "clubs"},
 		deck.Card{Value: 13, Suit: "hearts"},
@@ -339,19 +385,19 @@ func testHandCompareHighCardvsHighCardTier1() {
 
 	playerCards[player1] = []deck.Card{deck.Card{Value: 1, Suit: "clubs"}, deck.Card{Value: 5, Suit: "clubs"}}
 	playerCards[player2] = []deck.Card{deck.Card{Value: 5}, deck.Card{Value: 2}}
-	fmt.Println("Test is running comparision function high card vs high card tier 1")
+	name := "comparision function high card vs high card tier 1"
 	winners := getWinnerHand(tableCards, playerCards)
 	if len(winners) != 1 {
-		fmt.Println("Should be one winner")
+		return name, false, "Failed - Should be one winner"
 	}
 	if winners[0] == player1 {
-		fmt.Println("Test passed")
+		return name, true, "Test passed"
 	} else {
-		fmt.Println("Test failed high card Ace should be high card 5")
+		return name, false, "Test failed high card Ace should be high card 5"
 	}
 }
 
-func testHandCompareHighCardvsHighCardTier2() {
+func testHandCompareHighCardvsHighCardTier2() (string, bool, string) {
 	tableCards := []deck.Card{
 		deck.Card{Value: 1, Suit: "clubs"},
 		deck.Card{Value: 7, Suit: "hearts"},
@@ -366,19 +412,19 @@ func testHandCompareHighCardvsHighCardTier2() {
 
 	playerCards[player1] = []deck.Card{deck.Card{Value: 13, Suit: "clubs"}, deck.Card{Value: 5, Suit: "clubs"}}
 	playerCards[player2] = []deck.Card{deck.Card{Value: 5}, deck.Card{Value: 2}}
-	fmt.Println("Test is running comparision function high card vs high card tier 2")
+	name := "comparision function high card vs high card tier 2"
 	winners := getWinnerHand(tableCards, playerCards)
 	if len(winners) != 1 {
-		fmt.Println("Should be one winner")
+		return name, false, "Failed - Should be one winner"
 	}
 	if winners[0] == player1 {
-		fmt.Println("Test passed")
+		return name, true, "Test passed"
 	} else {
-		fmt.Println("Test failed high card King should be high card 5")
+		return name, false, "Test failed high card King should be high card 5"
 	}
 }
 
-func testHandCompareHighCardvsHighCardTier3() {
+func testHandCompareHighCardvsHighCardTier3() (string, bool, string) {
 	tableCards := []deck.Card{
 		deck.Card{Value: 1, Suit: "clubs"},
 		deck.Card{Value: 7, Suit: "hearts"},
@@ -393,19 +439,19 @@ func testHandCompareHighCardvsHighCardTier3() {
 
 	playerCards[player1] = []deck.Card{deck.Card{Value: 12, Suit: "clubs"}, deck.Card{Value: 5, Suit: "clubs"}}
 	playerCards[player2] = []deck.Card{deck.Card{Value: 5}, deck.Card{Value: 2}}
-	fmt.Println("Test is running comparision function high card vs high card tier 3")
+	name := "comparision function high card vs high card tier 3"
 	winners := getWinnerHand(tableCards, playerCards)
 	if len(winners) != 1 {
-		fmt.Println("Should be one winner")
+		return name, false, "Failed - Should be one winner"
 	}
 	if winners[0] == player1 {
-		fmt.Println("Test passed")
+		return name, true, "Test passed"
 	} else {
-		fmt.Println("Test failed high card Queen should be high card 5")
+		return name, false, "Test failed high card Queen should be high card 5"
 	}
 }
 
-func testHandCompareHighCardvsHighCardTier4() {
+func testHandCompareHighCardvsHighCardTier4() (string, bool, string) {
 	tableCards := []deck.Card{
 		deck.Card{Value: 1, Suit: "clubs"},
 		deck.Card{Value: 7, Suit: "hearts"},
@@ -420,19 +466,19 @@ func testHandCompareHighCardvsHighCardTier4() {
 
 	playerCards[player1] = []deck.Card{deck.Card{Value: 6, Suit: "clubs"}, deck.Card{Value: 5, Suit: "clubs"}}
 	playerCards[player2] = []deck.Card{deck.Card{Value: 11}, deck.Card{Value: 2}}
-	fmt.Println("Test is running comparision function high card vs high card tier 4")
+	name := "comparision function high card vs high card tier 4"
 	winners := getWinnerHand(tableCards, playerCards)
 	if len(winners) != 1 {
-		fmt.Println("Should be one winner")
+		return name, false, "Failed - Should be one winner"
 	}
 	if winners[0] == player2 {
-		fmt.Println("Test passed")
+		return name, true, "Test passed"
 	} else {
-		fmt.Println("Test failed high card Jack should be high card 5")
+		return name, false, "Test failed high card Jack should be high card 5"
 	}
 }
 
-func testHandCompareHighCardvsHighCardTier5() {
+func testHandCompareHighCardvsHighCardTier5() (string, bool, string) {
 	tableCards := []deck.Card{
 		deck.Card{Value: 5, Suit: "clubs"},
 		deck.Card{Value: 12, Suit: "hearts"},
@@ -447,19 +493,19 @@ func testHandCompareHighCardvsHighCardTier5() {
 
 	playerCards[player1] = []deck.Card{deck.Card{Value: 7, Suit: "clubs"}, deck.Card{Value: 11, Suit: "clubs"}}
 	playerCards[player2] = []deck.Card{deck.Card{Value: 11}, deck.Card{Value: 2}}
-	fmt.Println("Test is running comparision function high card vs high card tier 5")
+	name := "comparision function high card vs high card tier 5"
 	winners := getWinnerHand(tableCards, playerCards)
 	if len(winners) != 1 {
-		fmt.Println("Should be one winner")
+		return name, false, "Failed - Should be one winner"
 	}
 	if winners[0] == player1 {
-		fmt.Println("Test passed")
+		return name, true, "Test passed"
 	} else {
-		fmt.Println("Test failed high card 7 should be high card 5")
+		return name, false, "Test failed high card 7 should be high card 5"
 	}
 }
 
-func testHandCompareHighCardvsHighCardTie() {
+func testHandCompareHighCardvsHighCardTie() (string, bool, string) {
 	tableCards := []deck.Card{
 		deck.Card{Value: 8, Suit: "clubs"},
 		deck.Card{Value: 13, Suit: "hearts"},
@@ -474,16 +520,16 @@ func testHandCompareHighCardvsHighCardTie() {
 
 	playerCards[player1] = []deck.Card{deck.Card{Value: 5, Suit: "diamonds"}, deck.Card{Value: 3, Suit: "clubs"}}
 	playerCards[player2] = []deck.Card{deck.Card{Value: 5}, deck.Card{Value: 2}}
-	fmt.Println("Test is running comparision function high card vs high card tie")
+	name := "comparision function high card vs high card tie"
 	winners := getWinnerHand(tableCards, playerCards)
 	if len(winners) == 2 {
-		fmt.Println("Test passed")
+		return name, true, "Test passed"
 	} else {
-		fmt.Println("Test failed expected a tie")
+		return name, false, "Test failed expected a tie"
 	}
 }
 
-func testHandCompareHighCardvsHighCardAce1() {
+func testHandCompareHighCardvsHighCardAce1() (string, bool, string) {
 	tableCards := []deck.Card{
 		deck.Card{Value: 10, Suit: "clubs"},
 		deck.Card{Value: 7, Suit: "hearts"},
@@ -498,15 +544,93 @@ func testHandCompareHighCardvsHighCardAce1() {
 
 	playerCards[player1] = []deck.Card{deck.Card{Value: 6, Suit: "clubs"}, deck.Card{Value: 5, Suit: "clubs"}}
 	playerCards[player2] = []deck.Card{deck.Card{Value: 1}, deck.Card{Value: 2}}
-	fmt.Println("Test is running comparision function high card vs high card with Ace")
+	name := "comparision function high card vs high card with Ace"
 	winners := getWinnerHand(tableCards, playerCards)
 	if len(winners) != 1 {
-		fmt.Println("Should be one winner")
+		return name, false, "Failed - Should be one winner"
 	}
 	if winners[0] == player2 {
-		fmt.Println("Test passed")
+		return name, true, "Test passed"
 	} else {
-		fmt.Println("Test failed high card Ace should be high card 6")
+		return name, false, "Test failed high card Ace should be high card 6"
+	}
+}
+
+func testHandComparePairVsPair() (string, bool, string) {
+	tableCards := []deck.Card{
+		deck.Card{Value: 10, Suit: "clubs"},
+		deck.Card{Value: 7, Suit: "hearts"},
+		deck.Card{Value: 13, Suit: "clubs"},
+		deck.Card{Value: 12, Suit: "hearts"},
+		deck.Card{Value: 3, Suit: "spades"},
+	}
+	playerCards := make(map[*Client][]deck.Card)
+
+	player1 := &Client{}
+	player2 := &Client{}
+
+	playerCards[player1] = []deck.Card{deck.Card{Value: 10, Suit: "clubs"}, deck.Card{Value: 11, Suit: "clubs"}}
+	playerCards[player2] = []deck.Card{deck.Card{Value: 10}, deck.Card{Value: 2}}
+	name := "comparision function pair vs pair"
+	winners := getWinnerHand(tableCards, playerCards)
+	if len(winners) != 1 {
+		return name, false, "Failed - Should be one winner"
+	}
+	if winners[0] == player1 {
+		return name, true, "Test passed"
+	} else {
+		return name, false, "Test failed pair of 10 with high card Jack should beat pair of 10 with high card 7"
+	}
+}
+
+func testHandComparePairVsPair2() (string, bool, string) {
+	tableCards := []deck.Card{
+		deck.Card{Value: 10, Suit: "clubs"},
+		deck.Card{Value: 7, Suit: "hearts"},
+		deck.Card{Value: 13, Suit: "clubs"},
+		deck.Card{Value: 12, Suit: "hearts"},
+		deck.Card{Value: 3, Suit: "spades"},
+	}
+	playerCards := make(map[*Client][]deck.Card)
+
+	player1 := &Client{}
+	player2 := &Client{}
+
+	playerCards[player1] = []deck.Card{deck.Card{Value: 10, Suit: "clubs"}, deck.Card{Value: 1, Suit: "clubs"}}
+	playerCards[player2] = []deck.Card{deck.Card{Value: 10}, deck.Card{Value: 2}}
+	name := "comparision function pair vs pair"
+	winners := getWinnerHand(tableCards, playerCards)
+	if len(winners) != 1 {
+		return name, false, "Failed - Should be one winner"
+	}
+	if winners[0] == player1 {
+		return name, true, "Test passed"
+	} else {
+		return name, false, "Test failed pair of 10 with high card Ace should beat pair of 10 with high card 7"
+	}
+}
+
+func testHandComparePairVsPairTie() (string, bool, string) {
+	tableCards := []deck.Card{
+		deck.Card{Value: 10, Suit: "clubs"},
+		deck.Card{Value: 7, Suit: "hearts"},
+		deck.Card{Value: 13, Suit: "clubs"},
+		deck.Card{Value: 12, Suit: "hearts"},
+		deck.Card{Value: 3, Suit: "spades"},
+	}
+	playerCards := make(map[*Client][]deck.Card)
+
+	player1 := &Client{}
+	player2 := &Client{}
+
+	playerCards[player1] = []deck.Card{deck.Card{Value: 10, Suit: "clubs"}, deck.Card{Value: 4, Suit: "clubs"}}
+	playerCards[player2] = []deck.Card{deck.Card{Value: 10}, deck.Card{Value: 2}}
+	name := "comparision function pair vs pair"
+	winners := getWinnerHand(tableCards, playerCards)
+	if len(winners) != 1 {
+		return name, true, "Test passed"
+	} else {
+		return name, false, "Test failed pair of 10 high cards: 13,12,7 should tie with pair of 10 high cards: 13,12,7"
 	}
 }
 

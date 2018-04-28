@@ -47,7 +47,6 @@ func getWinnerHand(tableCards []deck.Card, clientCards map[*Client][]deck.Card) 
 	}
 
 	tiedTypePlayers, maxType := bestHandType(bestTypeSoFar, fullPlayerCards)
-
 	winners := resolveTie(tiedTypePlayers, maxType)
 	winnersArr := make([]*Client, 0)
 
@@ -62,13 +61,15 @@ func getWinnerHand(tableCards []deck.Card, clientCards map[*Client][]deck.Card) 
 func resolveTie(tiedPlayersCards map[*Client][]deck.Card, maxType int) map[*Client][]deck.Card {
 	switch maxType {
 	case HighCard:
-		return resolveHighCardTie(tiedPlayersCards)
+		return resolveHighCardTie(tiedPlayersCards, 5)
+	case Pair:
+		return resolvePairTie(tiedPlayersCards)
 	default:
 		return tiedPlayersCards
 	}
 }
 
-func resolveHighCardTie(playerCards map[*Client][]deck.Card) map[*Client][]deck.Card {
+func resolveHighCardTie(playerCards map[*Client][]deck.Card, cardsCount int) map[*Client][]deck.Card {
 
 	for _, cards := range playerCards {
 
@@ -82,7 +83,7 @@ func resolveHighCardTie(playerCards map[*Client][]deck.Card) map[*Client][]deck.
 			return cards[i].Value > cards[j].Value
 		})
 	}
-	for i := 0; i < 5; i++ {
+	for i := 0; i < cardsCount; i++ {
 		maxCard := 0
 		for _, cards := range playerCards {
 			if maxCard == 1 || cards[i].Value == 1 {
@@ -103,20 +104,57 @@ func resolveHighCardTie(playerCards map[*Client][]deck.Card) map[*Client][]deck.
 	return playerCards
 }
 
-func reolvePairTie() {
+func resolvePairTie(playerCards map[*Client][]deck.Card) map[*Client][]deck.Card {
+	highestPair := make(map[*Client]int)
+	high := 0
+	for client, cards := range playerCards {
+		clientHighestPair, _ := getHighestPair(cards)
+		if clientHighestPair > high || clientHighestPair == 1 {
+			high = clientHighestPair
+		}
+		highestPair[client] = clientHighestPair
+	}
 
+	tempPlayerCards := make(map[*Client][]deck.Card)
+	for client, cards := range playerCards {
+		if highestPair[client] == high {
+			tempCards := make([]deck.Card, 0)
+			for _, card := range cards {
+				if card.Value != high {
+					tempCards = append(tempCards, card)
+				}
+			}
+			tempPlayerCards[client] = tempCards
+		}
+	}
+	playerCards = tempPlayerCards
+
+	return resolveHighCardTie(playerCards, 3)
 }
 
-func groupByValue(cards []deck.Card) histogram {
+func getHighestPair(cards []deck.Card) (int, []deck.Card) {
 	histogramPre := make(histogram)
 	for _, card := range cards {
 		histogramPre[card.Value] = histogramPre[card.Value] + 1
 	}
-	histogram := make(histogram)
-	for _, count := range histogramPre {
-		histogram[count] = histogramPre[count] + 1
+	maxPairValue := 0
+	for value, count := range histogramPre {
+		if count != 2 {
+			continue
+		}
+		if value > maxPairValue || value == 1 {
+			maxPairValue = value
+		}
 	}
-	return histogram
+
+	restCards := make([]deck.Card, 0)
+	for _, card := range cards {
+		if card.Value != maxPairValue {
+			restCards = append(restCards, card)
+		}
+	}
+
+	return maxPairValue, restCards
 }
 
 func isStraight(cards []deck.Card) (bool, deck.Card) {
@@ -167,6 +205,19 @@ func isStraightFlush(cards []deck.Card) (bool, deck.Card) {
 		}
 	}
 	return false, deck.Card{}
+}
+
+func groupByValue(cards []deck.Card) histogram {
+	histogramPre := make(histogram)
+	for _, card := range cards {
+		histogramPre[card.Value] = histogramPre[card.Value] + 1
+	}
+
+	histogram := make(histogram)
+	for _, count := range histogramPre {
+		histogram[count] = histogram[count] + 1
+	}
+	return histogram
 }
 
 func (histogram histogram) getHistogramHand() int {
