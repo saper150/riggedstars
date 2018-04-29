@@ -142,7 +142,7 @@ func StartRound(game *Game) {
 	//showdown
 	winners := make([]*Client, 0)
 	if game.round.activePlayersCount() > 1 {
-		winners = getWinnerHand(game.round.tableCards, game.round.playerCards)
+		winners = GetWinnerHand(game.round.tableCards, game.round.playerCards)
 	} else {
 		//TODO: won last man standing
 

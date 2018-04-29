@@ -20,7 +20,7 @@ const (
 
 type histogram map[int]int
 
-func getWinnerHand(tableCards []deck.Card, clientCards map[*Client][]deck.Card) []*Client {
+func GetWinnerHand(tableCards []deck.Card, clientCards map[*Client][]deck.Card) []*Client {
 
 	fullPlayerCards := make(map[*Client][]deck.Card)
 	bestTypeSoFar := make(map[*Client]int)
@@ -63,16 +63,22 @@ func resolveTie(tiedPlayersCards map[*Client][]deck.Card, maxType int) map[*Clie
 	case HighCard:
 		return resolveHighCardTie(tiedPlayersCards, 5)
 	case Pair:
-		return resolvePairTie(tiedPlayersCards)
+		return resolvePairVsPair(tiedPlayersCards)
+	case TwoPairs:
+		return resolveTwoPairVsTwoPair(tiedPlayersCards)
+	case ThreeOfAKind:
+		return resolveThreeOfAkindVsThreeOfAKind(tiedPlayersCards)
+	case FourOfAKind:
+		return resolveFourOfAKindVsFourOfAKind(tiedPlayersCards)
+	case FullHouse:
+		return resolveFullHouseVsFullHouse(tiedPlayersCards)
 	default:
 		return tiedPlayersCards
 	}
 }
 
 func resolveHighCardTie(playerCards map[*Client][]deck.Card, cardsCount int) map[*Client][]deck.Card {
-
 	for _, cards := range playerCards {
-
 		sort.Slice(cards, func(i, j int) bool {
 			if cards[i].Value == 1 {
 				return true
@@ -100,53 +106,62 @@ func resolveHighCardTie(playerCards map[*Client][]deck.Card, cardsCount int) map
 		}
 		playerCards = tempPlayerCards
 	}
-
 	return playerCards
 }
 
-func resolvePairTie(playerCards map[*Client][]deck.Card) map[*Client][]deck.Card {
-	highestPair := make(map[*Client]int)
-	high := 0
-	for client, cards := range playerCards {
-		clientHighestPair, _ := getHighestPair(cards)
-		if clientHighestPair > high || clientHighestPair == 1 {
-			high = clientHighestPair
-		}
-		highestPair[client] = clientHighestPair
-	}
-
-	tempPlayerCards := make(map[*Client][]deck.Card)
-	for client, cards := range playerCards {
-		if highestPair[client] == high {
-			tempCards := make([]deck.Card, 0)
-			for _, card := range cards {
-				if card.Value != high {
-					tempCards = append(tempCards, card)
-				}
-			}
-			tempPlayerCards[client] = tempCards
-		}
-	}
-	playerCards = tempPlayerCards
-
-	return resolveHighCardTie(playerCards, 3)
+func resolvePairVsPair(playerCards map[*Client][]deck.Card) map[*Client][]deck.Card {
+	return resolveHighCardTie(resolveGroupTypeTie(playerCards, 2), 3)
 }
 
-func getHighestPair(cards []deck.Card) (int, []deck.Card) {
+func resolveGroupTypeTie(playerCards map[*Client][]deck.Card, group int) map[*Client][]deck.Card {
+	highestGroup := make(map[*Client]int)
+	restPlayerCards := make(map[*Client][]deck.Card)
+	highestGroupValue := 0
+	for client, cards := range playerCards {
+		clientHighestPair, restCards := getHighestGroup(cards, group)
+		restPlayerCards[client] = restCards
+		if highestGroupValue != 1 && clientHighestPair > highestGroupValue || clientHighestPair == 1 {
+			highestGroupValue = clientHighestPair
+		}
+		highestGroup[client] = clientHighestPair
+	}
+	for client, _ := range restPlayerCards {
+		if highestGroup[client] != highestGroupValue {
+			delete(restPlayerCards, client)
+		}
+	}
+	return restPlayerCards
+}
+
+func resolveTwoPairVsTwoPair(playerCards map[*Client][]deck.Card) map[*Client][]deck.Card {
+	return resolveHighCardTie(resolveGroupTypeTie(resolveGroupTypeTie(playerCards, 2), 2), 1)
+}
+
+func resolveThreeOfAkindVsThreeOfAKind(playerCards map[*Client][]deck.Card) map[*Client][]deck.Card {
+	return resolveHighCardTie(resolveGroupTypeTie(playerCards, 3), 2)
+}
+
+func resolveFourOfAKindVsFourOfAKind(playerCards map[*Client][]deck.Card) map[*Client][]deck.Card {
+	return resolveHighCardTie(resolveGroupTypeTie(playerCards, 4), 1)
+}
+
+func resolveFullHouseVsFullHouse(playerCards map[*Client][]deck.Card) map[*Client][]deck.Card {
+	return resolveGroupTypeTie(resolveGroupTypeTie(playerCards, 3), 2)
+}
+
+func getHighestGroup(cards []deck.Card, group int) (int, []deck.Card) {
 	histogramPre := make(histogram)
 	for _, card := range cards {
 		histogramPre[card.Value] = histogramPre[card.Value] + 1
 	}
 	maxPairValue := 0
 	for value, count := range histogramPre {
-		if count != 2 {
-			continue
-		}
-		if value > maxPairValue || value == 1 {
-			maxPairValue = value
+		if count == group {
+			if maxPairValue != 1 && value > maxPairValue || value == 1 {
+				maxPairValue = value
+			}
 		}
 	}
-
 	restCards := make([]deck.Card, 0)
 	for _, card := range cards {
 		if card.Value != maxPairValue {

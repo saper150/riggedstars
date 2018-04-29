@@ -4,6 +4,7 @@ import (
 	"math/rand"
 	"net/http"
 	"riggedstars/app/game"
+	"riggedstars/app/tests/gameTests"
 	"riggedstars/app/user"
 	"time"
 
@@ -12,7 +13,7 @@ import (
 )
 
 func main() {
-	game.RunTests()
+	gameTests.RunTests()
 	rand.Seed(time.Now().UTC().UnixNano())
 	r := mux.NewRouter()
 	user.RegisterRoutes(r.PathPrefix("/user").Subrouter())
