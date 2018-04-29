@@ -599,11 +599,347 @@ func testHandCompareFullHouseVsFullHouseTie() (string, bool, string) {
 
 	playerCards[player1] = []deck.Card{deck.Card{Value: 10, Suit: "clubs"}, deck.Card{Value: 4, Suit: "clubs"}}
 	playerCards[player2] = []deck.Card{deck.Card{Value: 10}, deck.Card{Value: 2}}
-	name := "comparision function Full House vs Full House"
+	name := "comparision function Full House vs Full House Tie"
 	winners := getWinnerHand(tableCards, playerCards)
 	if len(winners) != 1 {
 		return name, true, "Test passed"
 	} else {
 		return name, false, "Test failed Full House 13 of 1 should tie with Full House 13 of 1"
+	}
+}
+
+func testHandCompareStraightVsStraight() (string, bool, string) {
+	tableCards := []deck.Card{
+		deck.Card{Value: 10, Suit: "clubs"},
+		deck.Card{Value: 11, Suit: "hearts"},
+		deck.Card{Value: 10, Suit: "clubs"},
+		deck.Card{Value: 1, Suit: "hearts"},
+		deck.Card{Value: 12, Suit: "spades"},
+	}
+	playerCards := make(map[*game.Client][]deck.Card)
+
+	player1 := &game.Client{}
+	player2 := &game.Client{}
+
+	playerCards[player1] = []deck.Card{deck.Card{Value: 8, Suit: "clubs"}, deck.Card{Value: 9, Suit: "clubs"}}
+	playerCards[player2] = []deck.Card{deck.Card{Value: 13}, deck.Card{Value: 1}}
+	name := "comparision function Straight vs Straight"
+	winners := getWinnerHand(tableCards, playerCards)
+	if len(winners) != 1 {
+		return name, false, "Failed - Should be one winner"
+	}
+	if winners[0] == player2 {
+		return name, true, "Test passed"
+	} else {
+		return name, false, "Test failed straight 10 to 1 should beat straight 8 to 12"
+	}
+}
+
+func testHandCompareStraightVsStraight2() (string, bool, string) {
+	tableCards := []deck.Card{
+		deck.Card{Value: 10, Suit: "clubs"},
+		deck.Card{Value: 4, Suit: "hearts"},
+		deck.Card{Value: 3, Suit: "clubs"},
+		deck.Card{Value: 12, Suit: "hearts"},
+		deck.Card{Value: 5, Suit: "spades"},
+	}
+	playerCards := make(map[*game.Client][]deck.Card)
+
+	player1 := &game.Client{}
+	player2 := &game.Client{}
+
+	playerCards[player1] = []deck.Card{deck.Card{Value: 6, Suit: "clubs"}, deck.Card{Value: 7, Suit: "clubs"}}
+	playerCards[player2] = []deck.Card{deck.Card{Value: 1}, deck.Card{Value: 2}}
+	name := "comparision function Straight vs Straight 2"
+	winners := getWinnerHand(tableCards, playerCards)
+	if len(winners) != 1 {
+		return name, false, "Failed - Should be one winner"
+	}
+	if winners[0] == player1 {
+		return name, true, "Test passed"
+	} else {
+		return name, false, "Test failed straight 3 to 7 should beat straight 1 to 5"
+	}
+}
+
+func testHandCompareStraightVsStraight3() (string, bool, string) {
+	tableCards := []deck.Card{
+		deck.Card{Value: 4, Suit: "clubs"},
+		deck.Card{Value: 6, Suit: "hearts"},
+		deck.Card{Value: 6, Suit: "clubs"},
+		deck.Card{Value: 6, Suit: "hearts"},
+		deck.Card{Value: 5, Suit: "spades"},
+	}
+	playerCards := make(map[*game.Client][]deck.Card)
+
+	player1 := &game.Client{}
+	player2 := &game.Client{}
+
+	playerCards[player1] = []deck.Card{deck.Card{Value: 7, Suit: "clubs"}, deck.Card{Value: 8, Suit: "clubs"}}
+	playerCards[player2] = []deck.Card{deck.Card{Value: 3}, deck.Card{Value: 2}}
+	name := "comparision function Straight vs Straight 3"
+	winners := getWinnerHand(tableCards, playerCards)
+	if len(winners) != 1 {
+		return name, false, "Failed - Should be one winner"
+	}
+	if winners[0] == player1 {
+		return name, true, "Test passed"
+	} else {
+		return name, false, "Test failed straight 4 to 8 should beat straight 2 to 6"
+	}
+}
+
+func testHandCompareStraightVsStraightTie() (string, bool, string) {
+	tableCards := []deck.Card{
+		deck.Card{Value: 1, Suit: "clubs"},
+		deck.Card{Value: 8, Suit: "hearts"},
+		deck.Card{Value: 9, Suit: "clubs"},
+		deck.Card{Value: 10, Suit: "hearts"},
+		deck.Card{Value: 1, Suit: "spades"},
+	}
+	playerCards := make(map[*game.Client][]deck.Card)
+
+	player1 := &game.Client{}
+	player2 := &game.Client{}
+
+	playerCards[player1] = []deck.Card{deck.Card{Value: 7, Suit: "clubs"}, deck.Card{Value: 11, Suit: "clubs"}}
+	playerCards[player2] = []deck.Card{deck.Card{Value: 7}, deck.Card{Value: 11}}
+	name := "comparision function Straight vs Straight Tie"
+	winners := getWinnerHand(tableCards, playerCards)
+	if len(winners) != 1 {
+		return name, true, "Test passed"
+	} else {
+		return name, false, "Test failed straight 7 to 11 should tie with straight 7 to 11"
+	}
+}
+
+func testHandCompareFlushVsFlush() (string, bool, string) {
+	tableCards := []deck.Card{
+		deck.Card{Value: 10, Suit: "clubs"},
+		deck.Card{Value: 8, Suit: "clubs"},
+		deck.Card{Value: 12, Suit: "clubs"},
+		deck.Card{Value: 1, Suit: "hearts"},
+		deck.Card{Value: 12, Suit: "spades"},
+	}
+	playerCards := make(map[*game.Client][]deck.Card)
+
+	player1 := &game.Client{}
+	player2 := &game.Client{}
+
+	playerCards[player1] = []deck.Card{deck.Card{Value: 4, Suit: "clubs"}, deck.Card{Value: 11, Suit: "clubs"}}
+	playerCards[player2] = []deck.Card{deck.Card{Value: 5, Suit: "clubs"}, deck.Card{Value: 1, Suit: "clubs"}}
+	name := "comparision function Flush vs Flush"
+	winners := getWinnerHand(tableCards, playerCards)
+	if len(winners) != 1 {
+		return name, false, "Failed - Should be one winner"
+	}
+	if winners[0] == player2 {
+		return name, true, "Test passed"
+	} else {
+		return name, false, "Test failed Flush 1 high should beat Flush 12 high"
+	}
+}
+
+func testHandCompareFlushVsFlush2() (string, bool, string) {
+	tableCards := []deck.Card{
+		deck.Card{Value: 10, Suit: "clubs"},
+		deck.Card{Value: 9, Suit: "clubs"},
+		deck.Card{Value: 3, Suit: "clubs"},
+		deck.Card{Value: 12, Suit: "hearts"},
+		deck.Card{Value: 2, Suit: "spades"},
+	}
+	playerCards := make(map[*game.Client][]deck.Card)
+
+	player1 := &game.Client{}
+	player2 := &game.Client{}
+
+	playerCards[player1] = []deck.Card{deck.Card{Value: 6, Suit: "clubs"}, deck.Card{Value: 6, Suit: "clubs"}}
+	playerCards[player2] = []deck.Card{deck.Card{Value: 4, Suit: "clubs"}, deck.Card{Value: 11, Suit: "clubs"}}
+	name := "comparision function Flush vs Flush 2"
+	winners := getWinnerHand(tableCards, playerCards)
+	if len(winners) != 1 {
+		return name, false, "Failed - Should be one winner"
+	}
+	if winners[0] == player2 {
+		return name, true, "Test passed"
+	} else {
+		return name, false, "Test failed Flush 11 high should beat Flush 10 high"
+	}
+}
+
+func testHandCompareFlushVsFlushTie() (string, bool, string) {
+	tableCards := []deck.Card{
+		deck.Card{Value: 1, Suit: "clubs"},
+		deck.Card{Value: 12, Suit: "clubs"},
+		deck.Card{Value: 13, Suit: "clubs"},
+		deck.Card{Value: 11, Suit: "clubs"},
+		deck.Card{Value: 1, Suit: "spades"},
+	}
+	playerCards := make(map[*game.Client][]deck.Card)
+
+	player1 := &game.Client{}
+	player2 := &game.Client{}
+
+	playerCards[player1] = []deck.Card{deck.Card{Value: 6, Suit: "clubs"}, deck.Card{Value: 4, Suit: "clubs"}}
+	playerCards[player2] = []deck.Card{deck.Card{Value: 3, Suit: "clubs"}, deck.Card{Value: 2, Suit: "clubs"}}
+	name := "comparision function Flush vs Flush Tie"
+	winners := getWinnerHand(tableCards, playerCards)
+	if len(winners) != 1 {
+		return name, true, "Test passed"
+	} else {
+		return name, false, "Test failed Flush 1 high should tie with Flush 1 high"
+	}
+}
+
+func testHandCompareFlushVsFlushTie2() (string, bool, string) {
+	tableCards := []deck.Card{
+		deck.Card{Value: 10, Suit: "clubs"},
+		deck.Card{Value: 13, Suit: "clubs"},
+		deck.Card{Value: 5, Suit: "clubs"},
+		deck.Card{Value: 8, Suit: "clubs"},
+		deck.Card{Value: 1, Suit: "spades"},
+	}
+	playerCards := make(map[*game.Client][]deck.Card)
+
+	player1 := &game.Client{}
+	player2 := &game.Client{}
+
+	playerCards[player1] = []deck.Card{deck.Card{Value: 12, Suit: "clubs"}, deck.Card{Value: 4, Suit: "clubs"}}
+	playerCards[player2] = []deck.Card{deck.Card{Value: 11, Suit: "clubs"}, deck.Card{Value: 2, Suit: "clubs"}}
+	name := "comparision function Flush vs Flush Tie 2"
+	winners := getWinnerHand(tableCards, playerCards)
+	if len(winners) != 1 {
+		return name, true, "Test passed"
+	} else {
+		return name, false, "Test failed Flush 13 high should tie with Flush 13 high"
+	}
+}
+
+func testHandCompareStraightFlushVsStraightFlush() (string, bool, string) {
+	tableCards := []deck.Card{
+		deck.Card{Value: 10, Suit: "clubs"},
+		deck.Card{Value: 11, Suit: "clubs"},
+		deck.Card{Value: 12, Suit: "clubs"},
+		deck.Card{Value: 9, Suit: "clubs"},
+		deck.Card{Value: 12, Suit: "spades"},
+	}
+	playerCards := make(map[*game.Client][]deck.Card)
+
+	player1 := &game.Client{}
+	player2 := &game.Client{}
+
+	playerCards[player1] = []deck.Card{deck.Card{Value: 4, Suit: "clubs"}, deck.Card{Value: 8, Suit: "clubs"}}
+	playerCards[player2] = []deck.Card{deck.Card{Value: 1, Suit: "hearts"}, deck.Card{Value: 13, Suit: "clubs"}}
+	name := "comparision function Straight Flush vs Straight Flush"
+	winners := getWinnerHand(tableCards, playerCards)
+	if len(winners) != 1 {
+		return name, false, "Failed - Should be one winner"
+	}
+	if winners[0] == player2 {
+		return name, true, "Test passed"
+	} else {
+		return name, false, "Test failed Straight Flush 13 high should beat Flush 12 high"
+	}
+}
+
+func testHandCompareStraightFlushVsStraightFlush2() (string, bool, string) {
+	tableCards := []deck.Card{
+		deck.Card{Value: 10, Suit: "clubs"},
+		deck.Card{Value: 9, Suit: "clubs"},
+		deck.Card{Value: 8, Suit: "clubs"},
+		deck.Card{Value: 12, Suit: "hearts"},
+		deck.Card{Value: 2, Suit: "spades"},
+	}
+	playerCards := make(map[*game.Client][]deck.Card)
+
+	player1 := &game.Client{}
+	player2 := &game.Client{}
+
+	playerCards[player1] = []deck.Card{deck.Card{Value: 7, Suit: "clubs"}, deck.Card{Value: 6, Suit: "clubs"}}
+	playerCards[player2] = []deck.Card{deck.Card{Value: 12, Suit: "clubs"}, deck.Card{Value: 11, Suit: "clubs"}}
+	name := "comparision function Straight Flush vs Straight Flush 2"
+	winners := getWinnerHand(tableCards, playerCards)
+	if len(winners) != 1 {
+		return name, false, "Failed - Should be one winner"
+	}
+	if winners[0] == player2 {
+		return name, true, "Test passed"
+	} else {
+		return name, false, "Test failed Straight Flush 12 high should beat Straight Flush 10 high"
+	}
+}
+
+func testHandCompareStraightFlushVsStraightFlush3() (string, bool, string) {
+	tableCards := []deck.Card{
+		deck.Card{Value: 10, Suit: "clubs"},
+		deck.Card{Value: 11, Suit: "clubs"},
+		deck.Card{Value: 12, Suit: "clubs"},
+		deck.Card{Value: 9, Suit: "clubs"},
+		deck.Card{Value: 12, Suit: "spades"},
+	}
+	playerCards := make(map[*game.Client][]deck.Card)
+
+	player1 := &game.Client{}
+	player2 := &game.Client{}
+
+	playerCards[player1] = []deck.Card{deck.Card{Value: 4, Suit: "clubs"}, deck.Card{Value: 8, Suit: "clubs"}}
+	playerCards[player2] = []deck.Card{deck.Card{Value: 1, Suit: "clubs"}, deck.Card{Value: 13, Suit: "clubs"}}
+	name := "comparision function Straight Flush vs Straight Flush"
+	winners := getWinnerHand(tableCards, playerCards)
+	if len(winners) != 1 {
+		return name, false, "Failed - Should be one winner"
+	}
+	if winners[0] == player2 {
+		return name, true, "Test passed"
+	} else {
+		return name, false, "Test failed Straight Flush 1 high should beat Flush 12 high"
+	}
+}
+
+func testHandCompareStraightFlushVsStraightFlushTie() (string, bool, string) {
+	tableCards := []deck.Card{
+		deck.Card{Value: 10, Suit: "clubs"},
+		deck.Card{Value: 12, Suit: "clubs"},
+		deck.Card{Value: 13, Suit: "clubs"},
+		deck.Card{Value: 11, Suit: "clubs"},
+		deck.Card{Value: 9, Suit: "clubs"},
+	}
+	playerCards := make(map[*game.Client][]deck.Card)
+
+	player1 := &game.Client{}
+	player2 := &game.Client{}
+
+	playerCards[player1] = []deck.Card{deck.Card{Value: 6, Suit: "clubs"}, deck.Card{Value: 4, Suit: "clubs"}}
+	playerCards[player2] = []deck.Card{deck.Card{Value: 3, Suit: "clubs"}, deck.Card{Value: 2, Suit: "clubs"}}
+	name := "comparision function Straight Flush vs Straight Flush Tie"
+	winners := getWinnerHand(tableCards, playerCards)
+	if len(winners) != 1 {
+		return name, true, "Test passed"
+	} else {
+		return name, false, "Test failed Straight Flush 13 high should tie with Straight Flush 13 high"
+	}
+}
+
+func testHandCompareStraightFlushVsStraightFlushTie2() (string, bool, string) {
+	tableCards := []deck.Card{
+		deck.Card{Value: 10, Suit: "clubs"},
+		deck.Card{Value: 12, Suit: "clubs"},
+		deck.Card{Value: 13, Suit: "clubs"},
+		deck.Card{Value: 11, Suit: "clubs"},
+		deck.Card{Value: 1, Suit: "clubs"},
+	}
+	playerCards := make(map[*game.Client][]deck.Card)
+
+	player1 := &game.Client{}
+	player2 := &game.Client{}
+
+	playerCards[player1] = []deck.Card{deck.Card{Value: 6, Suit: "clubs"}, deck.Card{Value: 4, Suit: "clubs"}}
+	playerCards[player2] = []deck.Card{deck.Card{Value: 3, Suit: "clubs"}, deck.Card{Value: 2, Suit: "clubs"}}
+	name := "comparision function Straight Flush vs Straight Flush Tie"
+	winners := getWinnerHand(tableCards, playerCards)
+	if len(winners) != 1 {
+		return name, true, "Test passed"
+	} else {
+		return name, false, "Test failed Straight Flush 13 high should tie with Straight Flush 13 high"
 	}
 }

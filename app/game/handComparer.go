@@ -72,6 +72,12 @@ func resolveTie(tiedPlayersCards map[*Client][]deck.Card, maxType int) map[*Clie
 		return resolveFourOfAKindVsFourOfAKind(tiedPlayersCards)
 	case FullHouse:
 		return resolveFullHouseVsFullHouse(tiedPlayersCards)
+	case Straight:
+		return resolveStraightVsStraight(tiedPlayersCards)
+	case Flush:
+		return resolveFlushVsFlush(tiedPlayersCards)
+	case StraightFlush:
+		return resolveStraightVsStraight(tiedPlayersCards)
 	default:
 		return tiedPlayersCards
 	}
@@ -149,6 +155,59 @@ func resolveFullHouseVsFullHouse(playerCards map[*Client][]deck.Card) map[*Clien
 	return resolveGroupTypeTie(resolveGroupTypeTie(playerCards, 3), 2)
 }
 
+func resolveStraightVsStraight(playerCards map[*Client][]deck.Card) map[*Client][]deck.Card {
+	maxClientStraighValue := make(map[*Client]int)
+	maxStraightCardValue := 0
+	for client, cards := range playerCards {
+		_, maxCard := isStraight(cards)
+		maxClientStraighValue[client] = maxCard.Value
+		if maxStraightCardValue != 1 && maxCard.Value > maxStraightCardValue || maxCard.Value == 1 {
+			maxStraightCardValue = maxCard.Value
+		}
+	}
+	winningStraightCards := make(map[*Client][]deck.Card)
+	for client, cards := range playerCards {
+		if maxClientStraighValue[client] == maxStraightCardValue {
+			winningStraightCards[client] = cards
+		}
+	}
+	return winningStraightCards
+}
+
+func resolveFlushVsFlush(playerCards map[*Client][]deck.Card) map[*Client][]deck.Card {
+	maxClientFlushCard := make(map[*Client]deck.Card)
+	maxFlushCardValue := 0
+	for client, cards := range playerCards {
+		_, suitedCards := isFlush(cards)
+		for _, card := range suitedCards {
+			if card.Value == 1 {
+				maxClientFlushCard[client] = card
+				maxFlushCardValue = card.Value
+				break
+			}
+			if card.Value > maxClientFlushCard[client].Value {
+				maxClientFlushCard[client] = card
+			}
+			if card.Value > maxFlushCardValue && maxFlushCardValue != 1 {
+				maxFlushCardValue = card.Value
+			}
+		}
+	}
+	winningFlushCards := make(map[*Client][]deck.Card)
+	for client, cards := range playerCards {
+		if maxClientFlushCard[client].Value == maxFlushCardValue {
+			winningFlushCards[client] = cards
+		}
+	}
+
+	return winningFlushCards
+}
+
+func resolveStraightFlushVsStraightFlush(playerCards map[*Client][]deck.Card) map[*Client][]deck.Card {
+
+	return playerCards
+}
+
 func getHighestGroup(cards []deck.Card, group int) (int, []deck.Card) {
 	histogramPre := make(histogram)
 	for _, card := range cards {
@@ -176,20 +235,30 @@ func isStraight(cards []deck.Card) (bool, deck.Card) {
 	sort.Slice(cards, func(i, j int) bool {
 		return cards[i].Value < cards[j].Value
 	})
+	for _, card := range cards {
+		if card.Value == 1 {
+			cards = append(cards, card)
+			break
+		}
+	}
 	maxCard := deck.Card{}
-	sortedCount := 0
+	hasStraight := false
+	sortedCount := 1
 	for i := 1; i < len(cards); i++ {
-		if cards[i-1].Value == cards[i].Value-1 {
+		if cards[i-1].Value == cards[i].Value {
+			continue
+		}
+		if cards[i-1].Value == cards[i].Value-1 || cards[i-1].Value == cards[i].Value+12 {
 			sortedCount++
 		} else {
-			sortedCount = 0
+			sortedCount = 1
 		}
 		if sortedCount >= 5 {
+			hasStraight = true
 			maxCard = cards[i]
 		}
 	}
-
-	return sortedCount >= 5, maxCard
+	return hasStraight, maxCard
 }
 
 func isFlush(cards []deck.Card) (bool, []deck.Card) {
