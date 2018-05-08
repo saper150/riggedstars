@@ -103,9 +103,19 @@ func CreateStartRoundInfoMessage(clients map[int]*Client, gameStacks map[*Client
 }
 
 type EndRoundMessage struct {
-	Type string
+	Type    string
+	Winners []WinnerInfo
 }
 
-func CreateEndRoundMessage() interface{} {
-	return EndRoundMessage{"endRound"}
+type WinnerInfo struct {
+	ID   uint
+	Name string
+}
+
+func CreateEndRoundMessage(clients []*Client) interface{} {
+	winners := make([]WinnerInfo, len(clients))
+	for index, client := range clients {
+		winners[index] = WinnerInfo{client.user.ID, client.user.Name}
+	}
+	return EndRoundMessage{"endRound", winners}
 }

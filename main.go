@@ -1,15 +1,20 @@
 package main
 
 import (
+	"math/rand"
 	"net/http"
 	"riggedstars/app/game"
+	"riggedstars/app/tests/gameTests"
 	"riggedstars/app/user"
+	"time"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
 func main() {
+	gameTests.RunTests()
+	rand.Seed(time.Now().UTC().UnixNano())
 	r := mux.NewRouter()
 	user.RegisterRoutes(r.PathPrefix("/user").Subrouter())
 	game.RegisterRoutes(r.PathPrefix("/game").Subrouter())
