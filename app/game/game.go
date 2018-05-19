@@ -149,7 +149,7 @@ func StartRound(game *Game) {
 	}
 
 	//nextRound
-	game.broadcast(CreateEndRoundMessage(winners))
+	game.broadcast(CreateEndRoundMessage(winners, game.round.clientBets.sum()))
 
 	game.deleteDisconnectedClients()
 
@@ -177,6 +177,7 @@ func betStage(game *Game, activePlayerIndex int) {
 		clientsActions++
 	}
 	game.round.clientBets.add(game.round.stageBets)
+	game.broadcast(CreateEndBetStageMessage(game.round.stageBets.sum()))
 	game.round.stageBets.reset()
 }
 
@@ -216,6 +217,14 @@ func (bets bets) reset() {
 	for client := range bets {
 		bets[client] = 0
 	}
+}
+
+func (bets bets) sum() int {
+	betSum := 0
+	for _, bet := range bets {
+		betSum += bet
+	}
+	return betSum
 }
 
 func isBetStageOver(round *Round, clientsActions, activePlayersOnStart int) bool {
