@@ -36,6 +36,8 @@ type customClaims struct {
 
 var riggedKey = []byte("rigged")
 
+const registerStack = 10000
+
 func checkPassword(hashedPassword, password string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 	return err == nil
@@ -62,7 +64,7 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "Error while generating a hash", http.StatusBadRequest)
 		return
 	}
-	user := models.User{Name: userForm.Name, Password: string(bytesHash)}
+	user := models.User{Name: userForm.Name, Password: string(bytesHash), Stack: registerStack}
 	db.Create(&user)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &customClaims{
 		Name: user.Name,

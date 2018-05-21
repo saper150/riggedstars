@@ -113,8 +113,12 @@ func CreateStartRoundInfoMessage(clients map[int]*Client, gameStacks map[*Client
 
 type EndRoundMessage struct {
 	Type    string
-	Winners []WinnerInfo
-	Pot     int
+	Winners []PotWinner
+}
+
+type PotWinner struct {
+	Winner  WinnerInfo
+	Ammount int
 }
 
 type WinnerInfo struct {
@@ -122,10 +126,10 @@ type WinnerInfo struct {
 	Name string
 }
 
-func CreateEndRoundMessage(clients []*Client, pot int) interface{} {
-	winners := make([]WinnerInfo, len(clients))
-	for index, client := range clients {
-		winners[index] = WinnerInfo{client.user.ID, client.user.Name}
+func CreateEndRoundMessage(potWinners map[*Client]int) interface{} {
+	winners := make([]PotWinner, 0)
+	for client, ammount := range potWinners {
+		winners = append(winners, PotWinner{WinnerInfo{client.user.ID, client.user.Name}, ammount})
 	}
-	return EndRoundMessage{"endRound", winners, pot}
+	return EndRoundMessage{"endRound", winners}
 }

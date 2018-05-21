@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"riggedstars/app/db"
 )
 
 type clientCommand struct {
@@ -28,6 +29,7 @@ func (room *Room) run(hub *Hub) {
 		case client := <-room.Leave:
 			delete(room.Clients, client)
 			if room.Game != nil {
+				db.ChangeStack(client.user, room.Game.stacks[client])
 				room.Game.deleteClient(client)
 			}
 			room.sendToEveryOneExcept(nil, DeleteUserMessage(client.user))
