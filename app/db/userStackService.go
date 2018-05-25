@@ -2,6 +2,8 @@ package db
 
 import (
 	"riggedstars/app/models"
+
+	"github.com/jinzhu/gorm"
 )
 
 func ChangeStack(user models.User, ammount int) {
@@ -11,5 +13,5 @@ func ChangeStack(user models.User, ammount int) {
 	if userInDb.ID == 0 {
 		return
 	}
-	db.Model(&userInDb).Update("Stack", userInDb.Stack+ammount)
+	db.Model(&userInDb).Update("Stack", gorm.Expr("Stack + ?", ammount))
 }

@@ -189,9 +189,10 @@ func StartRound(game *Game) {
 	game.broadcast(CreateEndRoundMessage(potWinners, game.round.playerCards))
 	game.deleteDisconnectedClients()
 
-	waitForSeconds(game, roundDelaySec)
+	pauseBetweenRounds(game, roundDelaySec)
+	game.deleteDisconnectedClients()
 
-	if game.round.countPlayers() < 2 {
+	if len(game.round.clients) < 2 {
 		waitForPlayers(game)
 	}
 
@@ -199,16 +200,11 @@ func StartRound(game *Game) {
 	StartRound(game)
 }
 
-func waitForSeconds(game *Game, sec int) {
+func pauseBetweenRounds(game *Game, sec int) {
 	timer := time.NewTimer(time.Second * time.Duration(sec))
-	game.broadcast(CreateTextMessage("Game", fmt.Sprintf("New round in %d", sec)))
+	game.broadcast(CreateTextMessage("Game", fmt.Sprintf("New round in %d seconds", sec)))
 
-	select {
-
-	case <-timer.C:
-		game.broadcast(CreateTextMessage("Game", "timeout"))
-		return
-	}
+	<-timer.C
 }
 
 func waitForPlayers(game *Game) {
@@ -218,21 +214,12 @@ func waitForPlayers(game *Game) {
 	ticker := time.NewTicker(time.Second * waitForPlayersIntervalSec)
 	enoughPlayers := false
 	for !enoughPlayers {
-		select {
-		case <-ticker.C:
-			if game.round.countPlayers() >= 2 {
-				return
-			}
+		<-ticker.C
+		if len(game.round.clients) >= 2 {
+			return
 		}
-	}
-}
 
-func (round *Round) countPlayers() int {
-	sum := 0
-	for range round.clients {
-		sum++
 	}
-	return sum
 }
 
 func betStage(game *Game, activePlayerIndex int) {
