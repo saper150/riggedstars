@@ -1,9 +1,14 @@
 package game
 
 import (
+	"fmt"
+	"riggedstars/app/db"
 	"riggedstars/app/deck"
 	"time"
 )
+
+const roundDelaySec = 4
+const waitForPlayersIntervalSec = 3
 
 type bets map[*Client]int
 
@@ -43,6 +48,7 @@ func StartGame(clients map[*Client]bool, maxClients int) *Game {
 	for _, client := range game.clients {
 		game.clientsState[client] = true
 		game.stacks[client] = game.startingStack
+		db.ChangeStack(client.user, -game.startingStack)
 	}
 	go StartRound(&game)
 	return &game
@@ -59,6 +65,7 @@ type Round struct {
 	clients      map[int]*Client
 	maxPlayers   int
 	tableCards   []deck.Card
+	allInPlayers map[*Client]bool
 }
 
 func NewRound(players map[int]*Client, nextButtonIndex, nextRoundCounter, maxClients int) *Round {
@@ -73,12 +80,14 @@ func NewRound(players map[int]*Client, nextButtonIndex, nextRoundCounter, maxCli
 		clients:      players,
 		maxPlayers:   maxClients,
 		tableCards:   make([]deck.Card, 0),
+		allInPlayers: make(map[*Client]bool),
 	}
 
 	for _, client := range round.clients {
 		round.stageBets[client] = 0
 		round.clientBets[client] = 0
 		round.folded[client] = false
+		round.allInPlayers[client] = false
 		round.playerCards[client] = []deck.Card{round.roundDeck.Next(), round.roundDeck.Next()}
 		client.sendMessage <- CreateClientOwnCardMessage(round.playerCards[client])
 	}
@@ -99,9 +108,20 @@ func (game *Game) Bet(client *Client, ammount int) {
 	game.stacks[client] -= ammount
 }
 
+func (game *Game) BetAllIn(client *Client, ammount int) {
+	game.Bet(client, ammount)
+	game.round.allInPlayers[client] = true
+}
+
 func (game *Game) Blind(client *Client, multi int) {
-	game.Bet(client, game.blind*multi)
-	game.broadcast(CreateBetMessage(client, game.blind*multi))
+	blindSize := game.blind * multi
+	if game.stacks[client] <= blindSize {
+		game.BetAllIn(client, game.stacks[client])
+		game.broadcast(CreateBetMessage(client, game.stacks[client]))
+	} else {
+		game.Bet(client, game.blind*multi)
+		game.broadcast(CreateBetMessage(client, game.blind*multi))
+	}
 }
 
 func StartRound(game *Game) {
@@ -142,22 +162,64 @@ func StartRound(game *Game) {
 	//showdown
 	winners := make([]*Client, 0)
 	if game.round.activePlayersCount() > 1 {
-		winners = GetWinnerHand(game.round.tableCards, game.round.playerCards)
+		showdownCards := make(map[*Client][]deck.Card)
+		for client, fold := range game.round.folded {
+			if !fold {
+				showdownCards[client] = game.round.playerCards[client]
+			}
+		}
+		winners = GetWinnerHand(game.round.tableCards, showdownCards)
 	} else {
-		//TODO: won last man standing
-
+		for client, fold := range game.round.folded {
+			if !fold {
+				winners = append(winners, client)
+			}
+		}
+	}
+	//TODO: all ins
+	pot := game.round.clientBets.sum()
+	potWinners := make(map[(*Client)]int)
+	for _, client := range winners {
+		ammount := pot / len(winners)
+		potWinners[client] = ammount
+		game.stacks[client] += ammount
 	}
 
 	//nextRound
-	game.broadcast(CreateEndRoundMessage(winners))
-
+	game.broadcast(CreateEndRoundMessage(potWinners, game.round.playerCards))
 	game.deleteDisconnectedClients()
 
-	//TODO: evade using sleep
-	time.Sleep(time.Second * 3)
+	pauseBetweenRounds(game, roundDelaySec)
+	game.deleteDisconnectedClients()
+
+	if len(game.round.clients) < 2 {
+		waitForPlayers(game)
+	}
 
 	game.round = NewRound(game.clients, game.nextPlayerIndex(game.round.buttonIndex), game.round.roundCounter+1, game.maxPlayers)
 	StartRound(game)
+}
+
+func pauseBetweenRounds(game *Game, sec int) {
+	timer := time.NewTimer(time.Second * time.Duration(sec))
+	game.broadcast(CreateTextMessage("Game", fmt.Sprintf("New round in %d seconds", sec)))
+
+	<-timer.C
+}
+
+func waitForPlayers(game *Game) {
+
+	game.broadcast(CreateTextMessage("Game", "Waiting for players"))
+
+	ticker := time.NewTicker(time.Second * waitForPlayersIntervalSec)
+	enoughPlayers := false
+	for !enoughPlayers {
+		<-ticker.C
+		if len(game.round.clients) >= 2 {
+			return
+		}
+
+	}
 }
 
 func betStage(game *Game, activePlayerIndex int) {
@@ -171,12 +233,13 @@ func betStage(game *Game, activePlayerIndex int) {
 			maxBet := game.round.maxBet()
 			minBet := maxBet - game.round.stageBets[game.round.clients[activePlayerIndex]]
 			game.broadcast(CreateActivePlayerMessage(game.round.clients[activePlayerIndex], minBet))
-			bettingStageMessagesHandler(game, activePlayerIndex)
+			bettingStageMessagesHandler(game, activePlayerIndex, minBet)
 		}
 		activePlayerIndex = game.round.nextActivePlayerIndex((activePlayerIndex + 1) % len(game.round.clients))
 		clientsActions++
 	}
 	game.round.clientBets.add(game.round.stageBets)
+	game.broadcast(CreateEndBetStageMessage(game.round.stageBets.sum()))
 	game.round.stageBets.reset()
 }
 
@@ -200,7 +263,7 @@ func (round *Round) maxBet() int {
 
 func (round *Round) nextActivePlayerIndex(index int) int {
 	activePlayerIndex := index
-	for round.folded[round.clients[activePlayerIndex]] {
+	for round.folded[round.clients[activePlayerIndex]] || round.allInPlayers[round.clients[activePlayerIndex]] {
 		activePlayerIndex = (activePlayerIndex + 1) % len(round.clients)
 	}
 	return activePlayerIndex
@@ -218,8 +281,16 @@ func (bets bets) reset() {
 	}
 }
 
+func (bets bets) sum() int {
+	betSum := 0
+	for _, bet := range bets {
+		betSum += bet
+	}
+	return betSum
+}
+
 func isBetStageOver(round *Round, clientsActions, activePlayersOnStart int) bool {
-	return (areBetsEqual(round.stageBets, round.folded) && (clientsActions >= activePlayersOnStart || round.activePlayersCount() == 1))
+	return round.areBetsEqual() && (clientsActions >= activePlayersOnStart || round.activePlayersCount() == 1)
 }
 
 func (round *Round) activePlayersCount() int {
@@ -232,10 +303,10 @@ func (round *Round) activePlayersCount() int {
 	return activePlayers
 }
 
-func areBetsEqual(bets map[*Client]int, folded map[*Client]bool) bool {
+func (round *Round) areBetsEqual() bool {
 	set := make(map[int]interface{})
-	for client, bet := range bets {
-		if !folded[client] {
+	for client, bet := range round.stageBets {
+		if !round.folded[client] && !round.allInPlayers[client] {
 			set[bet] = ""
 			if len(set) != 1 {
 				return false
@@ -245,21 +316,33 @@ func areBetsEqual(bets map[*Client]int, folded map[*Client]bool) bool {
 	return true
 }
 
-func bettingStageMessagesHandler(game *Game, activePlayerIndex int) {
-	for {
-		message := <-game.gameplayChan
-		if message.From == game.round.clients[activePlayerIndex] {
-			switch message.Message.Type {
-			case "bet":
-				betSize := int(message.Message.Payload.(float64))
-				game.Bet(message.From, betSize)
-				message.From.broadcast(game, CreateBetMessage(message.From, betSize))
-			case "raise":
-			case "fold":
-				game.fold(message.From)
-			case "check":
+func bettingStageMessagesHandler(game *Game, activePlayerIndex int, minBet int) {
+	timer := time.NewTimer(time.Second * 10)
+	next := false
+	for !next {
+		select {
+		case message := <-game.gameplayChan:
+			if message.From == game.round.clients[activePlayerIndex] {
+				switch message.Message.Type {
+				case "bet":
+					betSize := int(message.Message.Payload.(float64))
+					if game.stacks[message.From]-betSize <= 0 {
+						game.BetAllIn(message.From, betSize)
+						message.From.broadcast(game, CreateBetMessage(message.From, betSize))
+					} else {
+						game.Bet(message.From, betSize)
+						message.From.broadcast(game, CreateBetMessage(message.From, betSize))
+					}
+				case "raise":
+				case "fold":
+					game.fold(message.From)
+				case "check":
+				}
+				next = true
 			}
-			break
+		case <-timer.C:
+			game.foldInactive(activePlayerIndex)
+			next = true
 		}
 	}
 }
@@ -267,6 +350,12 @@ func bettingStageMessagesHandler(game *Game, activePlayerIndex int) {
 func (game *Game) fold(client *Client) {
 	game.round.folded[client] = true
 	client.broadcast(game, CreateFoldMessage(client))
+}
+
+func (game *Game) foldInactive(activePlayerIndex int) {
+	client := game.round.clients[activePlayerIndex]
+	game.round.folded[client] = true
+	game.broadcast(CreateFoldMessage(client))
 }
 
 func (game *Game) addClient(client *Client) {
@@ -277,6 +366,8 @@ func (game *Game) addClient(client *Client) {
 	game.clients[index] = client
 	game.stacks[client] = game.startingStack
 	game.clientsState[client] = true
+	game.round.folded[client] = true
+	db.ChangeStack(client.user, -game.startingStack)
 }
 
 func (game *Game) deleteClient(client *Client) {

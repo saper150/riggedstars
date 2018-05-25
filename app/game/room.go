@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"riggedstars/app/db"
 )
 
 type clientCommand struct {
@@ -28,6 +29,7 @@ func (room *Room) run(hub *Hub) {
 		case client := <-room.Leave:
 			delete(room.Clients, client)
 			if room.Game != nil {
+				db.ChangeStack(client.user, room.Game.stacks[client])
 				room.Game.deleteClient(client)
 			}
 			room.sendToEveryOneExcept(nil, DeleteUserMessage(client.user))
@@ -64,7 +66,9 @@ func handleMessages(room *Room, command clientCommand) {
 		textMessage := CreateTextMessage(command.From.user.Name, command.Message.Payload.(string))
 		room.sendToEveryOneExcept(command.From, textMessage)
 	case "startGame":
-		room.Game = StartGame(room.Clients, room.MaxClients)
+		if room.Game == nil {
+			room.Game = StartGame(room.Clients, room.MaxClients)
+		}
 	default:
 		room.Game.gameplayChan <- command
 	}

@@ -52,6 +52,15 @@ func CreateBetMessage(client *Client, bet int) interface{} {
 	return BetMessage{"bet", client.user.ID, bet}
 }
 
+type EndBetStageMessage struct {
+	Type string
+	Pot  int
+}
+
+func CreateEndBetStageMessage(pot int) interface{} {
+	return EndBetStageMessage{"endBetStage", pot}
+}
+
 type FoldMessage struct {
 	Type string
 	ID   uint
@@ -104,7 +113,13 @@ func CreateStartRoundInfoMessage(clients map[int]*Client, gameStacks map[*Client
 
 type EndRoundMessage struct {
 	Type    string
-	Winners []WinnerInfo
+	Winners []PotWinner
+}
+
+type PotWinner struct {
+	Winner  WinnerInfo
+	Cards   []deck.Card
+	Ammount int
 }
 
 type WinnerInfo struct {
@@ -112,10 +127,10 @@ type WinnerInfo struct {
 	Name string
 }
 
-func CreateEndRoundMessage(clients []*Client) interface{} {
-	winners := make([]WinnerInfo, len(clients))
-	for index, client := range clients {
-		winners[index] = WinnerInfo{client.user.ID, client.user.Name}
+func CreateEndRoundMessage(potWinners map[*Client]int, cards map[*Client][]deck.Card) interface{} {
+	winners := make([]PotWinner, 0)
+	for client, ammount := range potWinners {
+		winners = append(winners, PotWinner{WinnerInfo{client.user.ID, client.user.Name}, cards[client], ammount})
 	}
 	return EndRoundMessage{"endRound", winners}
 }
