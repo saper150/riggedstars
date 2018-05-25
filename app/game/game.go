@@ -1,10 +1,14 @@
 package game
 
 import (
+	"fmt"
 	"riggedstars/app/db"
 	"riggedstars/app/deck"
 	"time"
 )
+
+const roundDelaySec = 4
+const waitForPlayersIntervalSec = 3
 
 type bets map[*Client]int
 
@@ -182,19 +186,45 @@ func StartRound(game *Game) {
 	}
 
 	//nextRound
-	game.broadcast(CreateEndRoundMessage(potWinners))
-
+	game.broadcast(CreateEndRoundMessage(potWinners, game.round.playerCards))
 	game.deleteDisconnectedClients()
 
-	//TODO: evade using sleep
-	time.Sleep(time.Second * 3)
+	waitForSeconds(game, roundDelaySec)
 
-	for game.round.countPlayers() <= 1 {
-		time.Sleep(time.Second * 1)
+	if game.round.countPlayers() < 2 {
+		waitForPlayers(game)
 	}
+
 	game.round = NewRound(game.clients, game.nextPlayerIndex(game.round.buttonIndex), game.round.roundCounter+1, game.maxPlayers)
-	//TODO: find better solution lol
 	StartRound(game)
+}
+
+func waitForSeconds(game *Game, sec int) {
+	timer := time.NewTimer(time.Second * time.Duration(sec))
+	game.broadcast(CreateTextMessage("Game", fmt.Sprintf("New round in %d", sec)))
+
+	select {
+
+	case <-timer.C:
+		game.broadcast(CreateTextMessage("Game", "timeout"))
+		return
+	}
+}
+
+func waitForPlayers(game *Game) {
+
+	game.broadcast(CreateTextMessage("Game", "Waiting for players"))
+
+	ticker := time.NewTicker(time.Second * waitForPlayersIntervalSec)
+	enoughPlayers := false
+	for !enoughPlayers {
+		select {
+		case <-ticker.C:
+			if game.round.countPlayers() >= 2 {
+				return
+			}
+		}
+	}
 }
 
 func (round *Round) countPlayers() int {
@@ -300,25 +330,32 @@ func (round *Round) areBetsEqual() bool {
 }
 
 func bettingStageMessagesHandler(game *Game, activePlayerIndex int, minBet int) {
-	for {
-		message := <-game.gameplayChan
-		if message.From == game.round.clients[activePlayerIndex] {
-			switch message.Message.Type {
-			case "bet":
-				betSize := int(message.Message.Payload.(float64))
-				if game.stacks[message.From]-betSize <= 0 {
-					game.BetAllIn(message.From, betSize)
-					message.From.broadcast(game, CreateBetMessage(message.From, betSize))
-				} else {
-					game.Bet(message.From, betSize)
-					message.From.broadcast(game, CreateBetMessage(message.From, betSize))
+	timer := time.NewTimer(time.Second * 10)
+	next := false
+	for !next {
+		select {
+		case message := <-game.gameplayChan:
+			if message.From == game.round.clients[activePlayerIndex] {
+				switch message.Message.Type {
+				case "bet":
+					betSize := int(message.Message.Payload.(float64))
+					if game.stacks[message.From]-betSize <= 0 {
+						game.BetAllIn(message.From, betSize)
+						message.From.broadcast(game, CreateBetMessage(message.From, betSize))
+					} else {
+						game.Bet(message.From, betSize)
+						message.From.broadcast(game, CreateBetMessage(message.From, betSize))
+					}
+				case "raise":
+				case "fold":
+					game.fold(message.From)
+				case "check":
 				}
-			case "raise":
-			case "fold":
-				game.fold(message.From)
-			case "check":
+				next = true
 			}
-			break
+		case <-timer.C:
+			game.foldInactive(activePlayerIndex)
+			next = true
 		}
 	}
 }
@@ -326,6 +363,12 @@ func bettingStageMessagesHandler(game *Game, activePlayerIndex int, minBet int) 
 func (game *Game) fold(client *Client) {
 	game.round.folded[client] = true
 	client.broadcast(game, CreateFoldMessage(client))
+}
+
+func (game *Game) foldInactive(activePlayerIndex int) {
+	client := game.round.clients[activePlayerIndex]
+	game.round.folded[client] = true
+	game.broadcast(CreateFoldMessage(client))
 }
 
 func (game *Game) addClient(client *Client) {

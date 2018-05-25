@@ -2,6 +2,8 @@ package user
 
 import (
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"riggedstars/app/db"
 	"riggedstars/app/models"
@@ -34,7 +36,17 @@ type customClaims struct {
 	jwt.StandardClaims
 }
 
-var riggedKey = []byte("rigged")
+var riggedKey = loadKeyFromCfg()
+
+func loadKeyFromCfg() []byte {
+	content, err := ioutil.ReadFile("key.cfg")
+	if err != nil {
+		return content
+	} else {
+		fmt.Errorf("key.cfg not found")
+		return []byte("notfoundkey")
+	}
+}
 
 const registerStack = 10000
 
@@ -97,6 +109,17 @@ func deleteUser(w http.ResponseWriter, req *http.Request) {
 	db.First(&user, id)
 	w.Header().Set("Content-Type", "application/json")
 
+	bearer := req.Header.Get("Authorization")
+	if claims, ok := getBearerTokenClaims(bearer); ok {
+		if claims.ID != user.ID {
+			http.Error(w, "", http.StatusUnauthorized)
+			return
+		}
+	} else {
+		http.Error(w, "", http.StatusUnauthorized)
+		return
+	}
+
 	if user.ID != 0 {
 		db.Delete(&user)
 		js, _ := json.Marshal(user)
@@ -119,6 +142,25 @@ func updateUser(w http.ResponseWriter, req *http.Request) {
 	id := vars["id"]
 	var user models.User
 	db.First(&user, id)
+	bearer := req.Header.Get("Authorization")
+	if claims, ok := getBearerTokenClaims(bearer); ok {
+		if claims.ID != user.ID {
+			http.Error(w, "", http.StatusUnauthorized)
+			return
+		}
+	} else {
+		http.Error(w, "", http.StatusUnauthorized)
+		return
+	}
+
+	if len(userForm.Password) > 0 {
+		bytesHash, err := bcrypt.GenerateFromPassword([]byte(userForm.Password), 12)
+		if err != nil {
+			http.Error(w, "Error while generating a hash", http.StatusBadRequest)
+			return
+		}
+		userForm.Password = string(bytesHash)
+	}
 	if user.ID == 0 {
 		http.Error(w, "No user with id:"+id, http.StatusBadRequest)
 		return
@@ -179,8 +221,8 @@ func tokenAuthWithClaimsExample(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	claims, err := getBearerTokenClaims(authToken)
-	if err == nil {
+	claims, ok := getBearerTokenClaims(authToken)
+	if ok {
 		w.Header().Set("Content-Type", "application/json")
 		js, _ := json.Marshal(customClaims{Name: claims.Name, ID: claims.ID})
 		w.Write(js)
@@ -190,20 +232,25 @@ func tokenAuthWithClaimsExample(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func getBearerTokenClaims(bearerTokenString string) (*customClaims, error) {
+func getBearerTokenClaims(bearerTokenString string) (*customClaims, bool) {
+	if len(bearerTokenString) == 0 || !strings.Contains(bearerTokenString, "Bearer ") {
+		return nil, false
+	}
 	tokenSplit := strings.Split(bearerTokenString, " ")
 	var tokenString string
 	if len(tokenSplit) == 2 {
 		tokenString = tokenSplit[1]
+	} else {
+		return nil, false
 	}
 	token, err := jwt.ParseWithClaims(tokenString, &customClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return []byte(riggedKey), nil
 	})
 	if err == nil {
 		claims := token.Claims.(*customClaims)
-		return claims, nil
+		return claims, true
 	} else {
-		return nil, err
+		return nil, false
 	}
 
 }

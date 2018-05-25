@@ -66,7 +66,9 @@ func handleMessages(room *Room, command clientCommand) {
 		textMessage := CreateTextMessage(command.From.user.Name, command.Message.Payload.(string))
 		room.sendToEveryOneExcept(command.From, textMessage)
 	case "startGame":
-		room.Game = StartGame(room.Clients, room.MaxClients)
+		if room.Game == nil {
+			room.Game = StartGame(room.Clients, room.MaxClients)
+		}
 	default:
 		room.Game.gameplayChan <- command
 	}

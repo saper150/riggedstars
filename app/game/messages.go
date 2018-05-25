@@ -118,6 +118,7 @@ type EndRoundMessage struct {
 
 type PotWinner struct {
 	Winner  WinnerInfo
+	Cards   []deck.Card
 	Ammount int
 }
 
@@ -126,10 +127,10 @@ type WinnerInfo struct {
 	Name string
 }
 
-func CreateEndRoundMessage(potWinners map[*Client]int) interface{} {
+func CreateEndRoundMessage(potWinners map[*Client]int, cards map[*Client][]deck.Card) interface{} {
 	winners := make([]PotWinner, 0)
 	for client, ammount := range potWinners {
-		winners = append(winners, PotWinner{WinnerInfo{client.user.ID, client.user.Name}, ammount})
+		winners = append(winners, PotWinner{WinnerInfo{client.user.ID, client.user.Name}, cards[client], ammount})
 	}
 	return EndRoundMessage{"endRound", winners}
 }
